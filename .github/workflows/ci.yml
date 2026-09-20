@@ -13,20 +13,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for .NET project files
+        id: check-dotnet
+        run: |
+          if find src -name "*.csproj" -o -name "*.sln" | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No se encontraron proyectos .NET en src/ todavía. Se omite build/test."
+          fi
+
       - name: Setup .NET 10
+        if: steps.check-dotnet.outputs.found == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Restore
+        if: steps.check-dotnet.outputs.found == 'true'
         run: dotnet restore
         working-directory: src
 
       - name: Build
+        if: steps.check-dotnet.outputs.found == 'true'
         run: dotnet build --no-restore --configuration Release
         working-directory: src
 
       - name: Test
+        if: steps.check-dotnet.outputs.found == 'true'
         run: dotnet test --no-build --configuration Release
         working-directory: src
 
@@ -39,7 +53,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for package.json
+        id: check-node
+        run: |
+          if [ -f "package.json" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No se encontró package.json en memory-microfrontend todavía. Se omite build/test."
+          fi
+
       - name: Setup Node
+        if: steps.check-node.outputs.found == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -47,10 +72,13 @@ jobs:
           cache-dependency-path: src/memory-microfrontend/package-lock.json
 
       - name: Install
+        if: steps.check-node.outputs.found == 'true'
         run: npm ci
 
       - name: Build
+        if: steps.check-node.outputs.found == 'true'
         run: npm run build
 
       - name: Test
+        if: steps.check-node.outputs.found == 'true'
         run: npm test
