@@ -15,4 +15,11 @@
     <ProjectReference Include="..\BattleHub.Memory.Data\BattleHub.Memory.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+    <Folder Include="Hubs\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="Services\" />
+  </ItemGroup>
+
 </Project>
