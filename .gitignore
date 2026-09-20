@@ -1,0 +1,35 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+appsettings.Development.json
+appsettings.*.local.json
+
+# --- Node / Aurelia / Module Federation ---
+node_modules/
+dist/
+build/
+.cache/
+*.tsbuildinfo
+
+# --- Entorno / secretos ---
+.env
+.env.*
+!.env.example
+
+# --- IDEs / SO ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+npm-debug.log*
+
+# --- Cobertura de pruebas ---
+coverage/
+TestResults/
