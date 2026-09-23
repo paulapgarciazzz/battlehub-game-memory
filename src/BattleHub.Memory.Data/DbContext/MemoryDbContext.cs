@@ -20,5 +20,23 @@ public class MemoryDbContext : Microsoft.EntityFrameworkCore.DbContext
 
     public DbSet<MemoryGameResultPlayer> GameResultPlayers => Set<MemoryGameResultPlayer>();
 
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<MemoryMatch>()
+            .HasAlternateKey(m => m.MatchId);
+
+        modelBuilder.Entity<MemoryPlayer>()
+            .HasOne(p => p.Match)
+            .WithMany(m => m.Players)
+            .HasForeignKey(p => p.MatchId)
+            .HasPrincipalKey(m => m.MatchId);
+
+        modelBuilder.Entity<MemoryCard>()
+            .HasOne(c => c.Match)
+            .WithMany(m => m.Cards)
+            .HasForeignKey(c => c.MatchId)
+            .HasPrincipalKey(m => m.MatchId);
+    }
 }

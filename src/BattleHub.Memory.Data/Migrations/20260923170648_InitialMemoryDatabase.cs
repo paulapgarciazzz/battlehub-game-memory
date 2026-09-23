@@ -33,7 +33,7 @@ namespace BattleHub.Memory.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MatchId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     FinishedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     WinnerUserId = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -41,6 +41,7 @@ namespace BattleHub.Memory.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Matches", x => x.Id);
+                    table.UniqueConstraint("AK_Matches_MatchId", x => x.MatchId);
                 });
 
             migrationBuilder.CreateTable(
@@ -69,21 +70,21 @@ namespace BattleHub.Memory.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MatchId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Position = table.Column<int>(type: "int", nullable: false),
                     PairId = table.Column<int>(type: "int", nullable: false),
                     IsRevealed = table.Column<bool>(type: "bit", nullable: false),
-                    IsMatched = table.Column<bool>(type: "bit", nullable: false),
-                    MatchId1 = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    IsMatched = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Cards", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Cards_Matches_MatchId1",
-                        column: x => x.MatchId1,
+                        name: "FK_Cards_Matches_MatchId",
+                        column: x => x.MatchId,
                         principalTable: "Matches",
-                        principalColumn: "Id");
+                        principalColumn: "MatchId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -91,26 +92,26 @@ namespace BattleHub.Memory.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MatchId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DisplayName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Score = table.Column<int>(type: "int", nullable: false),
-                    MatchId1 = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    Score = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Players", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Players_Matches_MatchId1",
-                        column: x => x.MatchId1,
+                        name: "FK_Players_Matches_MatchId",
+                        column: x => x.MatchId,
                         principalTable: "Matches",
-                        principalColumn: "Id");
+                        principalColumn: "MatchId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Cards_MatchId1",
+                name: "IX_Cards_MatchId",
                 table: "Cards",
-                column: "MatchId1");
+                column: "MatchId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_GameResultPlayers_GameResultId",
@@ -118,9 +119,9 @@ namespace BattleHub.Memory.Data.Migrations
                 column: "GameResultId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Players_MatchId1",
+                name: "IX_Players_MatchId",
                 table: "Players",
-                column: "MatchId1");
+                column: "MatchId");
         }
 
         /// <inheritdoc />
