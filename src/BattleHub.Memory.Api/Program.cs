@@ -1,8 +1,11 @@
+using BattleHub.Memory.Api.Hubs;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -13,6 +16,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapHub<MemoryHub>("/hubs/memory");
 
 var summaries = new[]
 {
