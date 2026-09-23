@@ -1,5 +1,6 @@
 using BattleHub.Memory.Data.DbContext;
 using Microsoft.EntityFrameworkCore;
+using BattleHub.Memory.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
 
 // OpenAPI
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -23,6 +25,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // Endpoint de prueba
+app.MapHub<MemoryHub>("/hubs/memory");
+
 var summaries = new[]
 {
     "Freezing",
