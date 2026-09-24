@@ -38,5 +38,11 @@ public class MemoryDbContext : Microsoft.EntityFrameworkCore.DbContext
             .WithMany(m => m.Cards)
             .HasForeignKey(c => c.MatchId)
             .HasPrincipalKey(m => m.MatchId);
+
+        modelBuilder.Entity<MemoryGameResultPlayer>()
+            .HasOne(p => p.GameResult)
+            .WithMany(r => r.Players)
+            .HasForeignKey(p => p.GameResultId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
