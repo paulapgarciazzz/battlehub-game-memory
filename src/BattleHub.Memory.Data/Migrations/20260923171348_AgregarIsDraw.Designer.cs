@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BattleHub.Memory.Data.Migrations
 {
     [DbContext(typeof(MemoryDbContext))]
-    [Migration("20260923024802_InitialMemoryDatabase")]
-    partial class InitialMemoryDatabase
+    [Migration("20260923171348_AgregarIsDraw")]
+    partial class AgregarIsDraw
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,10 +39,7 @@ namespace BattleHub.Memory.Data.Migrations
 
                     b.Property<string>("MatchId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("MatchId1")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("PairId")
                         .HasColumnType("int");
@@ -52,7 +49,7 @@ namespace BattleHub.Memory.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MatchId1");
+                    b.HasIndex("MatchId");
 
                     b.ToTable("Cards");
                 });
@@ -69,6 +66,9 @@ namespace BattleHub.Memory.Data.Migrations
                     b.Property<string>("GameType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDraw")
+                        .HasColumnType("bit");
 
                     b.Property<string>("MatchId")
                         .IsRequired()
@@ -126,7 +126,7 @@ namespace BattleHub.Memory.Data.Migrations
 
                     b.Property<string>("MatchId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("datetimeoffset");
@@ -151,10 +151,7 @@ namespace BattleHub.Memory.Data.Migrations
 
                     b.Property<string>("MatchId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("MatchId1")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Score")
                         .HasColumnType("int");
@@ -165,7 +162,7 @@ namespace BattleHub.Memory.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MatchId1");
+                    b.HasIndex("MatchId");
 
                     b.ToTable("Players");
                 });
@@ -174,7 +171,10 @@ namespace BattleHub.Memory.Data.Migrations
                 {
                     b.HasOne("BattleHub.Memory.Data.Entities.MemoryMatch", "Match")
                         .WithMany("Cards")
-                        .HasForeignKey("MatchId1");
+                        .HasForeignKey("MatchId")
+                        .HasPrincipalKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Match");
                 });
@@ -194,7 +194,10 @@ namespace BattleHub.Memory.Data.Migrations
                 {
                     b.HasOne("BattleHub.Memory.Data.Entities.MemoryMatch", "Match")
                         .WithMany("Players")
-                        .HasForeignKey("MatchId1");
+                        .HasForeignKey("MatchId")
+                        .HasPrincipalKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Match");
                 });
