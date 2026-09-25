@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="../tests/BattleHub.Memory.UnitTests/BattleHub.Memory.UnitTests.csproj" />
   <Project Path="BattleHub.Memory.Api/BattleHub.Memory.Api.csproj" />
   <Project Path="BattleHub.Memory.Data/BattleHub.Memory.Data.csproj" />
   <Project Path="BattleHub.Memory.Domain/BattleHub.Memory.Domain.csproj" />
