@@ -1,0 +1,8 @@
+<template>
+  <require from="./memory-card.css"></require>
+
+  <div class="memory-card ${card.matched ? 'memory-card--matched' : ''} ${disabled ? 'memory-card--disabled' : ''}"
+       click.trigger="onClick()">
+    <img src.bind="imageSrc" alt.bind="card.faceUp && card.value ? 'Carta ' + card.value : 'Carta boca abajo'">
+  </div>
+</template>

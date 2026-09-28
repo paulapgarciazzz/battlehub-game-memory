@@ -1,0 +1,8 @@
+<template>
+  <require from="./player-tray.css"></require>
+
+  <div class="player-tray ${isCurrentTurn ? 'player-tray--active' : ''} ${mirrored ? 'player-tray--mirrored' : ''}">
+    <p class="player-tray__name">${player ? player.displayName : 'Esperando...'}</p>
+    <p class="player-tray__count">${player ? player.matchedPairs : 0} parejas</p>
+  </div>
+</template>
