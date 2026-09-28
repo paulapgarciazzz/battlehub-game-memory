@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Domain;
 using Microsoft.AspNetCore.SignalR;
@@ -87,7 +88,16 @@ public class MemoryHub : Hub
             {
                 MatchId = matchId,
                 PreviewSeconds =
-                    session.Board.PreviewSeconds
+                    session.Board.PreviewSeconds,
+                Cards = session.Board.Cards.Select(
+                    c => new { c.Id, c.Value }),
+                // Se manda el roster completo acá porque es el primer evento que
+                // llega garantizado a AMBOS jugadores ya conectados al grupo. El
+                // evento "PlayerJoined" de un jugador solo llega a quienes ya
+                // estaban en el grupo en ese momento, así que el jugador que se
+                // conectó primero nunca se entera de sí mismo por ese camino.
+                Players = session.Players.Select(
+                    p => new { p.UserId, p.DisplayName })
             });
 
         await Task.Delay(
@@ -100,7 +110,11 @@ public class MemoryHub : Hub
             "PreviewFinished",
             new
             {
-                MatchId = matchId
+                MatchId = matchId,
+                // El cliente ya no adivina quién arranca en base al orden local
+                // de "players" (que puede diferir entre pantallas): el servidor
+                // es la única fuente de verdad del turno.
+                CurrentPlayerId = session.CurrentPlayer.UserId
             });
 
         // Comienza el temporizador del primer turno.
@@ -129,41 +143,16 @@ public class MemoryHub : Hub
         var session =
             _gameService.GetSession(matchId);
 
-        // Guardamos la primera carta antes de ejecutar
-        // la lógica de FlipCard().
-        var firstCard =
-            session.FirstFlippedCard;
-
-        // Guardamos la segunda carta antes de ejecutar
-        // la lógica de FlipCard().
-        var secondCard =
-            session.Board.GetCard(cardId);
-
-        var cards = new List<object>();
-
-        // Si ya había una primera carta,
-        // guardamos sus datos también.
-        if (firstCard is not null)
-        {
-            cards.Add(new
-            {
-                Id = firstCard.Id,
-                Value = firstCard.Value
-            });
-        }
-
-        // Agregamos la carta seleccionada.
-        cards.Add(new
-        {
-            Id = secondCard.Id,
-            Value = secondCard.Value
-        });
-
-        bool isMatch;
+        FlipCardResult result;
 
         try
         {
-            isMatch = session.FlipCard(
+            // GameSession.FlipCard arma el snapshot de las cartas
+            // involucradas atómicamente, dentro del mismo lock que muta el
+            // estado. No se debe reconstruir ese snapshot leyendo el
+            // dominio antes/después de esta llamada: eso reintroduce la
+            // carrera que dejaba cartas volteadas para siempre.
+            result = session.FlipCard(
                 userId,
                 cardId);
         }
@@ -179,14 +168,19 @@ public class MemoryHub : Hub
             new
             {
                 UserId = userId,
-                Cards = cards,
-                IsMatch = isMatch
+                Cards = result.Cards.Select(
+                    c => new { c.Id, c.Value }),
+                IsMatch = result.IsMatch
             });
 
-        // Si cambió el turno, iniciamos los 10 segundos
-        // para el nuevo jugador.
-        if (session.CurrentPlayer.UserId != userId
-            && !session.IsFinished)
+        // Dos cartas en el resultado significa que se resolvió un turno
+        // completo (hubo pareja o no la hubo). En ambos casos empieza un
+        // turno nuevo (el del rival, o uno extra para el mismo jugador si
+        // acertó la pareja), así que hay que reiniciar los 10 segundos.
+        // Si en cambio esta fue solo la primera carta del turno, el
+        // temporizador original sigue corriendo sin tocarse.
+        if (!session.IsFinished
+            && result.Cards.Count == 2)
         {
             StartTurnTimer(
                 matchId,

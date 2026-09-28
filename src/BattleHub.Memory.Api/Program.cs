@@ -25,12 +25,27 @@ builder.Services.AddOpenApi();
 // SignalR
 builder.Services.AddSignalR();
 
+const string DevCorsPolicy = "AllowAureliaDevClient";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(DevCorsPolicy, policy =>
+    {
+        policy.WithOrigins("http://localhost:8080")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseCors(DevCorsPolicy);
 
 app.UseHttpsRedirection();
 

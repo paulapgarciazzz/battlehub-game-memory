@@ -72,10 +72,10 @@ public class GameSessionTests
 
         // Act
         session.FlipCard("user1", pair[0].Id);
-        var isMatch = session.FlipCard("user1", pair[1].Id);
+        var result = session.FlipCard("user1", pair[1].Id);
 
         // Assert
-        Assert.True(isMatch);
+        Assert.True(result.IsMatch);
         Assert.Equal(1, players[0].MatchedPairs);
     }
     //comprobamos que el jugador con mas parejas sea el ganador
