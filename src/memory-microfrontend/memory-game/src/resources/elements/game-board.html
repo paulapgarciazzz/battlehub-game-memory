@@ -1,0 +1,24 @@
+<template>
+  <require from="./turn-indicator"></require>
+  <require from="./player-tray"></require>
+  <require from="./memory-card"></require>
+  <require from="./game-board.css"></require>
+
+  <div class="game-board">
+    <div class="game-board__overlay" if.bind="state.phase === 'preview'">
+      <p>Memorizá las cartas... la partida empieza en unos segundos</p>
+    </div>
+
+    <turn-indicator if.bind="state.phase === 'playing'"></turn-indicator>
+
+    <div class="game-board__layout">
+      <player-tray player.bind="myPlayer" is-current-turn.bind="isMyTrayActive"></player-tray>
+
+      <div class="game-board__grid" flip.trigger="onFlip($event)">
+        <memory-card repeat.for="card of state.cards" card.bind="card" disabled.bind="isCardDisabled"></memory-card>
+      </div>
+
+      <player-tray player.bind="opponentPlayer" is-current-turn.bind="isOpponentTrayActive" mirrored.bind="true"></player-tray>
+    </div>
+  </div>
+</template>
