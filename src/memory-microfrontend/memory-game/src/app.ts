@@ -1,3 +1,10 @@
+import {autoinject} from 'aurelia-framework';
+import {MemoryGameState} from './state/memory-game-state';
+import backgroundImage from './assets/backgrounds/background.webp';
+
+@autoinject()
 export class App {
-  public message = 'Hello World!';
+  public backgroundStyle = `background-image: url(${backgroundImage})`;
+
+  constructor(public state: MemoryGameState) {}
 }
