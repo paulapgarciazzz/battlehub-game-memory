@@ -1,4 +1,6 @@
 {
   "debug": true,
-  "testing": true
+  "testing": true,
+  "apiBaseUrl": "http://localhost:5095",
+  "hubBaseUrl": "http://localhost:5095"
 }

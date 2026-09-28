@@ -225,7 +225,7 @@ module.exports = ({ production }, { analyze, hmr, port, host }) => ({
       { test: /\.html$/i, loader: 'html-loader', options: { minimize: false } },
       { test: /\.ts$/, loader: "ts-loader" },
       // embed small images and fonts as Data Urls and larger ones as files:
-      { test: /\.(png|svg|jpg|jpeg|gif)$/i, type: 'asset' },
+      { test: /\.(png|svg|jpg|jpeg|gif|webp)$/i, type: 'asset' },
       { test: /\.(woff|woff2|ttf|eot|svg|otf)(\?v=[0-9]\.[0-9]\.[0-9])?$/i,  type: 'asset' },
       { test: /environment\.json$/i, use: [
         {loader: "app-settings-loader", options: {env: production ? 'production' : 'development' }},

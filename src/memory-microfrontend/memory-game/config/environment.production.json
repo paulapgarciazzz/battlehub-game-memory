@@ -1,4 +1,6 @@
 {
   "debug": false,
-  "testing": false
+  "testing": false,
+  "apiBaseUrl": "",
+  "hubBaseUrl": ""
 }
