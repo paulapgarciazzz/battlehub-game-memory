@@ -1,10 +1,10 @@
-import {autoinject} from 'aurelia-framework';
+import {resolve} from 'aurelia';
 import {MemoryGameOrchestrator} from '../../services/memory-game-orchestrator';
 import {MemoryGameState, PlayerViewModel} from '../../state/memory-game-state';
 
-@autoinject()
 export class GameBoard {
-  constructor(private orchestrator: MemoryGameOrchestrator, public state: MemoryGameState) {}
+  private readonly orchestrator = resolve(MemoryGameOrchestrator);
+  public readonly state = resolve(MemoryGameState);
 
   public get isCardDisabled(): boolean {
     return this.state.phase !== 'playing' || !this.state.isMyTurn;

@@ -1,22 +1,25 @@
-import {autoinject} from 'aurelia-framework';
+import {resolve} from 'aurelia';
 import {MemoryGameOrchestrator} from '../../services/memory-game-orchestrator';
 import {MemoryGameState} from '../../state/memory-game-state';
 
-@autoinject()
 export class JoinScreen {
+  private readonly orchestrator = resolve(MemoryGameOrchestrator);
+  public readonly state = resolve(MemoryGameState);
+
   public userId = '';
   public displayName = '';
   public matchId = '';
   public joining = false;
   public error: string | null = null;
 
-  constructor(private orchestrator: MemoryGameOrchestrator, public state: MemoryGameState) {}
-
   public generateMatchId(): void {
     this.matchId = Math.random().toString(36).slice(2, 8).toUpperCase();
   }
 
-  public async join(): Promise<void> {
+  public async join(event?: Event): Promise<void> {
+    // Aurelia 2 no cancela el submit del formulario por su cuenta.
+    event?.preventDefault();
+
     if (!this.userId.trim() || !this.displayName.trim() || !this.matchId.trim()) {
       this.error = 'Completá tu usuario, tu nombre y el código de partida.';
       return;

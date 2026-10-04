@@ -1,5 +1,4 @@
-import {autoinject, singleton} from 'aurelia-framework';
-import {EventAggregator} from 'aurelia-event-aggregator';
+import {IEventAggregator, resolve, singleton} from 'aurelia';
 import * as signalR from '@microsoft/signalr';
 import environment from '../../config/environment.json';
 import {
@@ -19,12 +18,10 @@ export const MemoryHubEvents = {
   ConnectionClosed: 'memory:connection-closed'
 } as const;
 
-@autoinject()
 @singleton()
 export class MemoryHubService {
+  private readonly ea = resolve(IEventAggregator);
   private connection: signalR.HubConnection | null = null;
-
-  constructor(private ea: EventAggregator) {}
 
   public async connect(): Promise<void> {
     if (this.connection) {

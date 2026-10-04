@@ -1,14 +1,12 @@
-<template>
-  <require from="./turn-indicator.css"></require>
+<import from="./turn-indicator.css"></import>
 
-  <div class="turn-indicator">
-    <p class="turn-indicator__label">
-      Turno de <strong>${state.currentPlayer ? state.currentPlayer.displayName : '...'}</strong>
-      <span if.bind="state.isMyTurn"> (¡es tu turno!)</span>
-    </p>
-    <div class="turn-indicator__bar">
-      <div class="turn-indicator__bar-fill" style="width: ${remainingRatio * 100}%"></div>
-    </div>
-    <p class="turn-indicator__seconds">${remainingSeconds}s</p>
+<div class="turn-indicator">
+  <p class="turn-indicator__label">
+    Turno de <strong>${state.currentPlayer ? state.currentPlayer.displayName : '...'}</strong>
+    <span if.bind="state.isMyTurn"> (¡es tu turno!)</span>
+  </p>
+  <div class="turn-indicator__bar">
+    <div class="turn-indicator__bar-fill" style="width: ${remainingRatio * 100}%"></div>
   </div>
-</template>
+  <p class="turn-indicator__seconds">${remainingSeconds}s</p>
+</div>

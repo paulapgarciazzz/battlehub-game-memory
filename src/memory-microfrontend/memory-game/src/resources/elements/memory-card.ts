@@ -1,13 +1,12 @@
-import {autoinject, bindable} from 'aurelia-framework';
+import {bindable, INode, resolve} from 'aurelia';
 import {CardViewModel} from '../../state/memory-game-state';
 import {CARD_BACK_IMAGE, imageForValue} from '../../services/card-image.map';
 
-@autoinject()
 export class MemoryCard {
   @bindable public card!: CardViewModel;
   @bindable public disabled = false;
 
-  constructor(private element: Element) {}
+  private readonly element = resolve(INode) as HTMLElement;
 
   public get imageSrc(): string {
     if (this.card.faceUp && this.card.value) {

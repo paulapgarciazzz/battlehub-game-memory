@@ -1,4 +1,4 @@
-import {singleton} from 'aurelia-framework';
+import {singleton} from 'aurelia';
 import environment from '../../config/environment.json';
 import {MemoryGameHistoryDto} from '../models/memory-game-history.dto';
 

@@ -1,4 +1,4 @@
-import {singleton} from 'aurelia-framework';
+import {singleton} from 'aurelia';
 
 export type GamePhase = 'join' | 'waiting-for-opponent' | 'preview' | 'playing' | 'finished';
 

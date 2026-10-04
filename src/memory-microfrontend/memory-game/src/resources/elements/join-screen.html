@@ -1,37 +1,35 @@
-<template>
-  <require from="./join-screen.css"></require>
+<import from="./join-screen.css"></import>
 
-  <div class="join-screen">
-    <h1 class="join-screen__title">Memoria BattleHub</h1>
+<div class="join-screen">
+  <h1 class="join-screen__title">Memoria BattleHub</h1>
 
-    <form class="join-screen__form" submit.trigger="join()">
-      <label>
-        Tu nombre
-        <input type="text" value.bind="displayName" placeholder="Ej: Ana" disabled.bind="joining || state.phase !== 'join'">
-      </label>
+  <form class="join-screen__form" submit.trigger="join($event)">
+    <label>
+      Tu nombre
+      <input type="text" value.bind="displayName" placeholder="Ej: Ana" disabled.bind="joining || state.phase !== 'join'">
+    </label>
 
-      <label>
-        Tu usuario
-        <input type="text" value.bind="userId" placeholder="Ej: jugador1" disabled.bind="joining || state.phase !== 'join'">
-      </label>
+    <label>
+      Tu usuario
+      <input type="text" value.bind="userId" placeholder="Ej: jugador1" disabled.bind="joining || state.phase !== 'join'">
+    </label>
 
-      <label>
-        Código de partida
-        <div class="join-screen__match-id">
-          <input type="text" value.bind="matchId" placeholder="Ej: ABC123" disabled.bind="joining || state.phase !== 'join'">
-          <button type="button" click.trigger="generateMatchId()" disabled.bind="joining || state.phase !== 'join'">Generar</button>
-        </div>
-      </label>
+    <label>
+      Código de partida
+      <div class="join-screen__match-id">
+        <input type="text" value.bind="matchId" placeholder="Ej: ABC123" disabled.bind="joining || state.phase !== 'join'">
+        <button type="button" click.trigger="generateMatchId()" disabled.bind="joining || state.phase !== 'join'">Generar</button>
+      </div>
+    </label>
 
-      <p class="join-screen__error" if.bind="error">${error}</p>
+    <p class="join-screen__error" if.bind="error">${error}</p>
 
-      <button type="submit" class="join-screen__submit" if.bind="state.phase === 'join'" disabled.bind="joining">
-        ${joining ? 'Conectando...' : 'Unirme a la partida'}
-      </button>
+    <button type="submit" class="join-screen__submit" if.bind="state.phase === 'join'" disabled.bind="joining">
+      ${joining ? 'Conectando...' : 'Unirme a la partida'}
+    </button>
 
-      <p class="join-screen__waiting" if.bind="state.phase === 'waiting-for-opponent'">
-        Esperando al segundo jugador para la partida <strong>${state.matchId}</strong>...
-      </p>
-    </form>
-  </div>
-</template>
+    <p class="join-screen__waiting" if.bind="state.phase === 'waiting-for-opponent'">
+      Esperando al segundo jugador para la partida <strong>${state.matchId}</strong>...
+    </p>
+  </form>
+</div>

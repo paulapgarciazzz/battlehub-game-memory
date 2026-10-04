@@ -1,0 +1,8 @@
+<import from="./resources/elements/join-screen"></import>
+<import from="./resources/elements/game-view"></import>
+<import from="./memory-app.css"></import>
+
+<div class="memory-app" style.bind="backgroundStyle">
+  <join-screen if.bind="state.phase === 'join' || state.phase === 'waiting-for-opponent'"></join-screen>
+  <game-view else></game-view>
+</div>
