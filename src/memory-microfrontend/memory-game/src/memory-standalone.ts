@@ -4,7 +4,7 @@ import backgroundImage from './assets/backgrounds/background.webp';
 
 /**
  * Raíz del modo independiente (solo para desarrollo local en
- * http://localhost:8080): se entra con un código de partida escrito a mano.
+ * http://localhost:4003): se entra con un código de partida escrito a mano.
  * Dentro de BattleHub, el Shell carga GameModule y le pasa el matchId.
  */
 export class MemoryStandalone {

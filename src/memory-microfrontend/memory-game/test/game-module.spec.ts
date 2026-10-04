@@ -1,10 +1,11 @@
 import { createFixture } from '@aurelia/testing';
+import type { GameContext } from '../src/game-contracts';
 import { GameModule } from '../src/game-module';
 import { MemoryStandalone } from '../src/memory-standalone';
 import { MemoryGameState } from '../src/state/memory-game-state';
 import { createFakeHub, createFakeHttp, createTestContainer, fakeRegistrations } from './fakes';
 
-const context = { matchId: 'match-001', gameType: 'memory', currentUser: { id: 'user-001', displayName: 'Ana' } };
+const context: GameContext = { matchId: 'match-001', gameType: 'memory', currentUser: { id: 'user-001', displayName: 'Ana' } };
 
 function setup() {
   const hub = createFakeHub();
@@ -75,7 +76,7 @@ describe('GameModule (contrato con el Shell)', () => {
   it('muestra la espera del rival sin pantalla de unión', async () => {
     const hub = createFakeHub();
     const { appHost, component, startPromise } = createFixture(
-      '<game-module component.ref="game"></game-module>',
+      '<memory-game-module component.ref="game"></memory-game-module>',
       class { game!: GameModule; },
       [GameModule, ...fakeRegistrations(hub, createFakeHttp())]);
     await startPromise;

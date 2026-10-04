@@ -1,6 +1,3 @@
-<import from="./resources/elements/game-view"></import>
-<import from="./memory-app.css"></import>
-
 <div class="memory-app memory-app--embedded" style.bind="backgroundStyle">
   <p class="memory-app__waiting" if.bind="state.phase === 'join'">Conectando con la partida...</p>
   <p class="memory-app__waiting" if.bind="state.phase === 'waiting-for-opponent'">

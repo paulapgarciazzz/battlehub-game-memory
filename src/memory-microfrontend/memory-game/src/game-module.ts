@@ -1,5 +1,8 @@
-import {resolve} from 'aurelia';
+import {customElement, resolve} from 'aurelia';
+import template from './game-module.html';
+import './memory-app.css';
 import type {GameContext, GameModule as IGameModule} from './game-contracts';
+import {GameView} from './resources/elements/game-view';
 import {MemoryGameOrchestrator} from './services/memory-game-orchestrator';
 import {MemoryGameState} from './state/memory-game-state';
 import backgroundImage from './assets/backgrounds/background.webp';
@@ -12,7 +15,12 @@ import backgroundImage from './assets/backgrounds/background.webp';
  *
  * El matchId y el usuario vienen del Shell (que los recibe de Matchmaking y
  * Auth0): aquí no hay pantalla de unión ni código de partida.
+ *
+ * El nombre del elemento lleva el prefijo del juego (ADR-003, sección 3). Con
+ * @customElement explícito, las dependencias se declaran aquí y no con
+ * <import> en la plantilla.
  */
+@customElement({name: 'memory-game-module', template, dependencies: [GameView]})
 export class GameModule implements IGameModule {
   public readonly state = resolve(MemoryGameState);
   public readonly backgroundStyle = `background-image: url(${backgroundImage})`;

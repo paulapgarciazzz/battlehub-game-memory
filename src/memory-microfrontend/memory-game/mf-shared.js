@@ -1,6 +1,5 @@
-// Dependencias compartidas con el Shell (copia de battlehub-shell/tooling/mf-shared.js, ADR-003).
-// Si el Shell cambia esta lista o la versión, hay que actualizarla aquí también:
-// con strictVersion, una versión distinta de Aurelia impide cargar el juego en el Shell.
+// ADR-003 §3 — Dependencias compartidas. Este archivo es IDÉNTICO en el Shell y en los 3 juegos: no lo modifiquen.
+// Si usan otro paquete @aurelia/* (router, fetch-client, validation...), agréguenlo a la lista y avisen al Equipo 3.
 const AURELIA_VERSION = '2.0.0-rc.2';
 const pkgs = [
   'aurelia',
