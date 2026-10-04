@@ -55,7 +55,8 @@ public class MemoryHub : Hub
 
         var session = _gameService.AddPlayer(
             matchId,
-            player);
+            player,
+            out var sessionCreated);
 
         await Clients.Group(matchId).SendAsync(
             "PlayerJoined",
@@ -65,7 +66,10 @@ public class MemoryHub : Hub
                 DisplayName = displayName
             });
 
-        if (session is not null)
+        // Solo se hace la previsualización cuando esta llamada creó la
+        // partida. Si alguien vuelve a hacer JoinMatch (ej. al reconectarse),
+        // la partida ya existía y la previsualización no se repite.
+        if (sessionCreated && session is not null)
         {
             await StartPreview(
                 matchId,
@@ -139,8 +143,13 @@ public class MemoryHub : Hub
             throw new HubException(
                 "El userId es obligatorio.");
 
-        var session =
-            _gameService.GetSession(matchId);
+        if (!_gameService.TryGetSession(
+            matchId,
+            out var session))
+        {
+            throw new HubException(
+                $"No existe una partida activa con el matchId '{matchId}'.");
+        }
 
         FlipCardResult result;
 
@@ -160,8 +169,8 @@ public class MemoryHub : Hub
             throw new HubException(ex.Message);
         }
 
-        // Enviamos a todos los jugadores las cartas
-        // involucradas en el movimiento.
+        // Enviamos a todos los jugadores las cartas involucradas en el
+        // movimiento, junto con el turno ya resuelto por el servidor.
         await Clients.Group(matchId).SendAsync(
             "CardFlipped",
             new
@@ -169,7 +178,9 @@ public class MemoryHub : Hub
                 UserId = userId,
                 Cards = result.Cards.Select(
                     c => new { c.Id, c.Value }),
-                IsMatch = result.IsMatch
+                IsMatch = result.IsMatch,
+                CurrentPlayerId = result.CurrentPlayerId,
+                IsFinished = result.IsFinished
             });
 
         // Dos cartas en el resultado significa que se resolvió un turno
@@ -178,7 +189,7 @@ public class MemoryHub : Hub
         // acertó la pareja), así que hay que reiniciar los 10 segundos.
         // Si en cambio esta fue solo la primera carta del turno, el
         // temporizador original sigue corriendo sin tocarse.
-        if (!session.IsFinished
+        if (!result.IsFinished
             && result.Cards.Count == 2)
         {
             _turnTimerService.Start(session);
