@@ -26,6 +26,8 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-transform-stub": "^2.0.0",
     "style-loader": "^4.0.0",
+    "stylelint": "^16.26.1",
+    "stylelint-config-standard": "^36.0.1",
     "terser-webpack-plugin": "^5.6.1",
     "ts-loader": "^9.5.1",
     "tslib": "^2.8.1",
@@ -37,7 +39,9 @@
     "webpack-dev-server": "^5.2.0"
   },
   "scripts": {
-    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:js": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "lint": "npm run lint:js && npm run lint:css",
     "start": "webpack serve",
     "build": "webpack --env production",
     "build:dev": "webpack",

@@ -1,4 +1,4 @@
-.game-board {
+.memory-game-board {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9,18 +9,18 @@
   margin-bottom: auto;
 }
 
-.game-board__overlay {
+.memory-game-board__overlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgb(0 0 0 / 55%);
   font-size: 1.1rem;
   z-index: 2;
 }
 
-.game-board__layout {
+.memory-game-board__layout {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -28,7 +28,7 @@
   flex-wrap: wrap;
 }
 
-.game-board__grid {
+.memory-game-board__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(3.5rem, 5rem));
   gap: 0.5rem;

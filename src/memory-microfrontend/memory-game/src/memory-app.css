@@ -1,4 +1,4 @@
-.memory-app {
+.memory-game {
   min-height: 100vh;
   width: 100%;
   background-color: #071b2e;
@@ -14,15 +14,15 @@
 }
 
 /* Dentro del Shell el juego ocupa solo el área asignada (contrato 03, sección 7). */
-.memory-app--embedded {
+.memory-game--embedded {
   min-height: 700px;
 }
 
-.memory-app__waiting {
+.memory-game__waiting {
   margin: 4rem auto 0;
   padding: 2rem;
   max-width: 24rem;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgb(0 0 0 / 55%);
   border-radius: 1rem;
   color: #fff;
   text-align: center;

@@ -1,9 +1,9 @@
 <import from="./join-screen.css"></import>
 
-<div class="join-screen">
-  <h1 class="join-screen__title">Memoria BattleHub</h1>
+<div class="memory-game-join-screen">
+  <h1 class="memory-game-join-screen__title">Memoria BattleHub</h1>
 
-  <form class="join-screen__form" submit.trigger="join($event)">
+  <form class="memory-game-join-screen__form" submit.trigger="join($event)">
     <label>
       Tu nombre
       <input type="text" value.bind="displayName" placeholder="Ej: Ana" disabled.bind="joining || state.phase !== 'join'">
@@ -16,19 +16,19 @@
 
     <label>
       Código de partida
-      <div class="join-screen__match-id">
+      <div class="memory-game-join-screen__match-id">
         <input type="text" value.bind="matchId" placeholder="Ej: ABC123" disabled.bind="joining || state.phase !== 'join'">
         <button type="button" click.trigger="generateMatchId()" disabled.bind="joining || state.phase !== 'join'">Generar</button>
       </div>
     </label>
 
-    <p class="join-screen__error" if.bind="error">${error}</p>
+    <p class="memory-game-join-screen__error" if.bind="error">${error}</p>
 
-    <button type="submit" class="join-screen__submit" if.bind="state.phase === 'join'" disabled.bind="joining">
+    <button type="submit" class="memory-game-join-screen__submit" if.bind="state.phase === 'join'" disabled.bind="joining">
       ${joining ? 'Conectando...' : 'Unirme a la partida'}
     </button>
 
-    <p class="join-screen__waiting" if.bind="state.phase === 'waiting-for-opponent'">
+    <p class="memory-game-join-screen__waiting" if.bind="state.phase === 'waiting-for-opponent'">
       Esperando al segundo jugador para la partida <strong>${state.matchId}</strong>...
     </p>
   </form>

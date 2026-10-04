@@ -1,4 +1,4 @@
-.result-screen {
+.memory-game-result-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6,19 +6,19 @@
   max-width: 24rem;
   margin: 4rem auto 0;
   padding: 2rem;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgb(0 0 0 / 55%);
   border-radius: 1rem;
   color: #fff;
   text-align: center;
 }
 
-.result-screen__scores {
+.memory-game-result-screen__scores {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.result-screen__save-error {
+.memory-game-result-screen__save-error {
   color: #ff6b6b;
   display: flex;
   flex-direction: column;
@@ -26,8 +26,8 @@
   align-items: center;
 }
 
-.result-screen__save-error button,
-.result-screen__play-again {
+.memory-game-result-screen__save-error button,
+.memory-game-result-screen__play-again {
   padding: 0.6rem 1rem;
   border-radius: 0.5rem;
   border: none;

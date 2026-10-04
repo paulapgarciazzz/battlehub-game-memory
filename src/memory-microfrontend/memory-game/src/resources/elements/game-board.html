@@ -3,21 +3,21 @@
 <import from="./memory-card"></import>
 <import from="./game-board.css"></import>
 
-<div class="game-board">
-  <div class="game-board__overlay" if.bind="state.phase === 'preview'">
+<div class="memory-game-board">
+  <div class="memory-game-board__overlay" if.bind="state.phase === 'preview'">
     <p>Memorizá las cartas... la partida empieza en unos segundos</p>
   </div>
 
-  <div class="game-board__overlay" if.bind="state.paused && state.phase === 'playing'">
+  <div class="memory-game-board__overlay" if.bind="state.paused && state.phase === 'playing'">
     <p>Juego en pausa. La partida sigue corriendo para tu rival.</p>
   </div>
 
   <turn-indicator if.bind="state.phase === 'playing'"></turn-indicator>
 
-  <div class="game-board__layout">
+  <div class="memory-game-board__layout">
     <player-tray player.bind="myPlayer" is-current-turn.bind="isMyTrayActive"></player-tray>
 
-    <div class="game-board__grid" flip.trigger="onFlip($event)">
+    <div class="memory-game-board__grid" flip.trigger="onFlip($event)">
       <memory-card repeat.for="card of state.cards" card.bind="card" disabled.bind="isCardDisabled"></memory-card>
     </div>
 

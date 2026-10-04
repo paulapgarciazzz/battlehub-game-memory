@@ -1,6 +1,6 @@
 <import from="./memory-card.css"></import>
 
-<div class="memory-card ${card.matched ? 'memory-card--matched' : ''} ${disabled ? 'memory-card--disabled' : ''}"
+<div class="memory-game-card ${card.matched ? 'memory-game-card--matched' : ''} ${disabled ? 'memory-game-card--disabled' : ''}"
      click.trigger="onClick()">
   <img src.bind="imageSrc" alt.bind="card.faceUp && card.value ? 'Carta ' + card.value : 'Carta boca abajo'">
 </div>

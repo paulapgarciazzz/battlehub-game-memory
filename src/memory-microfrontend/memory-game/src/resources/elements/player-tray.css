@@ -1,4 +1,4 @@
-.player-tray {
+.memory-game-player-tray {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,31 +10,31 @@
   border-radius: 0.75rem;
   background-color: #c0392b;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
   border: 2px solid transparent;
   transition: border-color 0.2s ease;
 }
 
-.player-tray--active {
+.memory-game-player-tray--active {
   border-color: #ffb703;
 }
 
-.player-tray--mirrored {
+.memory-game-player-tray--mirrored {
   background-color: #1f6feb;
   transform: scaleX(-1);
 }
 
-.player-tray--mirrored .player-tray__name,
-.player-tray--mirrored .player-tray__count {
-  transform: scaleX(-1);
-}
-
-.player-tray__name {
+.memory-game-player-tray__name {
   margin: 0;
   font-weight: 700;
 }
 
-.player-tray__count {
+.memory-game-player-tray__count {
   margin: 0;
   font-size: 0.9rem;
+}
+
+.memory-game-player-tray--mirrored .memory-game-player-tray__name,
+.memory-game-player-tray--mirrored .memory-game-player-tray__count {
+  transform: scaleX(-1);
 }
