@@ -14,7 +14,7 @@ export class MemoryHttpService {
 
   public async getHistory(userId: string): Promise<MemoryGameHistoryDto[]> {
     const response = await fetch(
-      `${this.baseUrl}/api/games/memory/history/${encodeURIComponent(userId)}`);
+      `${this.baseUrl}/api/games/memory/players/${encodeURIComponent(userId)}/history`);
 
     if (!response.ok) {
       throw new Error('No se pudo obtener el historial de partidas.');

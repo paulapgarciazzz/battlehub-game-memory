@@ -24,6 +24,7 @@ export interface CardFlippedMessage {
   userId: string;
   cards: CardSnapshot[];
   isMatch: boolean;
+  currentPlayerId: string;
 }
 
 export interface TurnTimeoutMessage {

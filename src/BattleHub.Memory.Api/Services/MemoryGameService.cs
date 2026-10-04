@@ -1,4 +1,5 @@
-﻿using BattleHub.Memory.Domain;
+﻿using System.Diagnostics.CodeAnalysis;
+using BattleHub.Memory.Domain;
 
 namespace BattleHub.Memory.Api.Services;
 
@@ -8,10 +9,19 @@ public class MemoryGameService
     private readonly Dictionary<string, GameSession> _sessions = new();
     private readonly Dictionary<string, List<Player>> _waitingPlayers = new();
 
+    /// <summary>
+    /// Agrega un jugador a la partida. sessionCreated es true solo cuando
+    /// esta llamada fue la que creó la partida (llegó el segundo jugador);
+    /// si la partida ya existía (ej. alguien se reconecta) es false, para
+    /// que el Hub no repita la previsualización.
+    /// </summary>
     public GameSession? AddPlayer(
         string matchId,
-        Player player)
+        Player player,
+        out bool sessionCreated)
     {
+        sessionCreated = false;
+
         // Dos jugadores pueden llamar a JoinMatch casi al mismo tiempo;
         // sin lock, dos hilos podrían leer _waitingPlayers a la vez y
         // ninguno vería al otro jugador recién agregado.
@@ -49,6 +59,8 @@ public class MemoryGameService
             // Ya no necesitamos mantenerlos como jugadores esperando.
             _waitingPlayers.Remove(matchId);
 
+            sessionCreated = true;
+
             return session;
         }
     }
@@ -70,14 +82,17 @@ public class MemoryGameService
             board,
             players);
 
-        _sessions[matchId] = session;
+        lock (_lock)
+        {
+            _sessions[matchId] = session;
+        }
 
         return session;
     }
 
     public GameSession GetSession(string matchId)
     {
-        if (!_sessions.TryGetValue(matchId, out var session))
+        if (!TryGetSession(matchId, out var session))
         {
             throw new InvalidOperationException(
                 $"No existe una partida activa con el matchId '{matchId}'.");
@@ -86,14 +101,30 @@ public class MemoryGameService
         return session;
     }
 
+    public bool TryGetSession(
+        string matchId,
+        [NotNullWhen(true)] out GameSession? session)
+    {
+        lock (_lock)
+        {
+            return _sessions.TryGetValue(matchId, out session);
+        }
+    }
+
     public bool HasSession(string matchId)
     {
-        return _sessions.ContainsKey(matchId);
+        lock (_lock)
+        {
+            return _sessions.ContainsKey(matchId);
+        }
     }
 
     public void RemoveSession(string matchId)
     {
-        _sessions.Remove(matchId);
-        _waitingPlayers.Remove(matchId);
+        lock (_lock)
+        {
+            _sessions.Remove(matchId);
+            _waitingPlayers.Remove(matchId);
+        }
     }
 }

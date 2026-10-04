@@ -10,9 +10,25 @@ namespace BattleHub.Memory.Domain;
 /// </summary>
 public readonly record struct CardSnapshot(int Id, string Value);
 
+/// <summary>
+/// Resultado de una jugada. CurrentPlayerId, TurnNumber e IsFinished se
+/// calculan dentro del mismo lock que la jugada, así el Hub informa a los
+/// clientes de quién es el turno sin volver a leer el dominio.
+/// </summary>
 public readonly record struct FlipCardResult(
     IReadOnlyList<CardSnapshot> Cards,
-    bool IsMatch);
+    bool IsMatch,
+    string CurrentPlayerId,
+    int TurnNumber,
+    bool IsFinished);
+
+/// <summary>
+/// Resultado de quitar un turno por tiempo agotado.
+/// </summary>
+public readonly record struct TurnTimeoutResult(
+    string PreviousPlayerId,
+    string CurrentPlayerId,
+    int TurnNumber);
 
 public class GameSession
 {
@@ -22,9 +38,16 @@ public class GameSession
     public Board Board { get; }
     public IReadOnlyList<Player> Players { get; }
 
+    // La hora de inicio la registra el servidor, no el cliente.
+    public DateTimeOffset StartedAt { get; }
+
     private readonly object _lock = new();
     private int _currentPlayerIndex;
     private Card? _firstFlippedCard;
+
+    // Aumenta cada vez que empieza un turno nuevo. Sirve para que un
+    // temporizador viejo no le quite el turno a un jugador que ya jugó.
+    private int _turnNumber;
 
     public Player CurrentPlayer => Players[_currentPlayerIndex];
 
@@ -32,6 +55,17 @@ public class GameSession
     public Card? FirstFlippedCard => _firstFlippedCard;
 
     public bool IsFinished => Board.AllMatched;
+
+    public int TurnNumber
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _turnNumber;
+            }
+        }
+    }
 
     public GameSession(
         string matchId,
@@ -45,6 +79,7 @@ public class GameSession
         MatchId = matchId;
         Board = board;
         Players = players;
+        StartedAt = DateTimeOffset.UtcNow;
         _currentPlayerIndex = 0;
     }
 
@@ -84,9 +119,13 @@ public class GameSession
             {
                 _firstFlippedCard = card;
 
+                // Primera carta del turno: el turno sigue siendo el mismo.
                 return new FlipCardResult(
                     new[] { new CardSnapshot(card.Id, card.Value) },
-                    IsMatch: false);
+                    IsMatch: false,
+                    CurrentPlayerId: CurrentPlayer.UserId,
+                    TurnNumber: _turnNumber,
+                    IsFinished: false);
             }
 
             var previousCard = _firstFlippedCard;
@@ -111,13 +150,20 @@ public class GameSession
 
             _firstFlippedCard = null;
 
+            // Con o sin pareja, se resolvió una jugada de 2 cartas y empieza
+            // un turno nuevo (del rival, o uno extra si acertó la pareja).
+            _turnNumber++;
+
             return new FlipCardResult(
                 new[]
                 {
                     new CardSnapshot(previousCard.Id, previousCard.Value),
                     new CardSnapshot(card.Id, card.Value)
                 },
-                isMatch);
+                isMatch,
+                CurrentPlayer.UserId,
+                _turnNumber,
+                IsFinished);
         }
     }
 
@@ -135,14 +181,51 @@ public class GameSession
                 throw new InvalidOperationException(
                     "La partida ya terminó.");
 
-            if (_firstFlippedCard is not null)
+            ForfeitTurn();
+        }
+    }
+
+    /// <summary>
+    /// Quita el turno por tiempo agotado solo si el turno que se esperaba
+    /// sigue siendo el actual y la partida no terminó. Así, un temporizador
+    /// que se armó para un turno ya jugado no le quita el turno al jugador.
+    /// </summary>
+    public bool TryForfeitTurnByTimeout(
+        int expectedTurnNumber,
+        out TurnTimeoutResult result)
+    {
+        lock (_lock)
+        {
+            if (IsFinished || expectedTurnNumber != _turnNumber)
             {
-                _firstFlippedCard.Flip();
-                _firstFlippedCard = null;
+                result = default;
+                return false;
             }
 
-            AdvanceTurn();
+            var previousPlayerId = CurrentPlayer.UserId;
+
+            ForfeitTurn();
+
+            result = new TurnTimeoutResult(
+                previousPlayerId,
+                CurrentPlayer.UserId,
+                _turnNumber);
+
+            return true;
         }
+    }
+
+    // Se llama siempre dentro del lock.
+    private void ForfeitTurn()
+    {
+        if (_firstFlippedCard is not null)
+        {
+            _firstFlippedCard.Flip();
+            _firstFlippedCard = null;
+        }
+
+        AdvanceTurn();
+        _turnNumber++;
     }
 
     public IReadOnlyList<Player> GetWinners()

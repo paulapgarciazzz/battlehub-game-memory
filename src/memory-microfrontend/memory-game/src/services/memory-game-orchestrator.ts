@@ -141,7 +141,13 @@ export class MemoryGameOrchestrator {
     }
 
     if (msg.cards.length === 2) {
-      window.setTimeout(() => this.hideUnmatchedCards(flippedIds, msg.userId), NO_MATCH_REVEAL_DELAY_MS);
+      // El turno lo decide el servidor y se aplica de una vez, para que el
+      // contador no quede corriendo con el jugador anterior durante la animación.
+      this.state.currentPlayerId = msg.currentPlayerId;
+      this.resetTurnDeadline();
+
+      // El setTimeout queda solo para dejar ver las cartas antes de ocultarlas.
+      window.setTimeout(() => this.hideUnmatchedCards(flippedIds), NO_MATCH_REVEAL_DELAY_MS);
     }
   }
 
@@ -163,13 +169,9 @@ export class MemoryGameOrchestrator {
         : player);
   }
 
-  private hideUnmatchedCards(cardIds: Set<number>, previousPlayerId: string): void {
+  private hideUnmatchedCards(cardIds: Set<number>): void {
     this.state.cards = this.state.cards.map(card =>
       cardIds.has(card.id) && !card.matched ? {...card, faceUp: false} : card);
-
-    const opponent = this.state.opponentOf(previousPlayerId);
-    this.state.currentPlayerId = opponent?.userId ?? this.state.currentPlayerId;
-    this.resetTurnDeadline();
   }
 
   private resetTurnDeadline(): void {
