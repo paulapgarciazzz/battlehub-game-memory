@@ -1,33 +1,58 @@
 # `memory-game`
 
-This project is bootstrapped by [aurelia-cli](https://github.com/aurelia/cli).
+Microfrontend del juego de Memoria (Equipo 6) en **Aurelia 2**, integrado al Shell de BattleHub
+con **Webpack Module Federation**.
 
-For more information, go to https://aurelia.io/docs/cli/webpack
+## Versiones (ADR-003 del Shell)
 
-## Run dev app
+| Herramienta | Versión |
+|---|---|
+| Node.js | 24 LTS (`>=24.11.0 <25`, ver `.nvmrc`) |
+| `aurelia` y `@aurelia/*` | `2.0.0-rc.2` exacta |
+| Webpack | 5 |
 
-Run `npm start`, then open `http://localhost:8080`
+`mf-shared.js` es una copia de `battlehub-shell/tooling/mf-shared.js`. Aurelia se comparte como
+`singleton` con `strictVersion`: si la versión no coincide con la del Shell, el juego no carga.
 
-You can change the standard webpack configurations from CLI easily with something like this: `npm start -- --open --port 8888`. However, it is better to change the respective npm scripts or `webpack.config.js` with these options, as per your need.
+## Dos formas de ejecutarlo
 
-To enable Webpack Bundle Analyzer, do `npm run analyze` (production build).
+**Dentro del Shell (BattleHub).** El Shell carga `./GameModule` desde `remoteEntry.js` y le entrega
+el contexto (`matchId`, `gameType`, `currentUser`), según el contrato 03 (secciones 5 y 6).
+`GameModule` implementa `initialize`, `start`, `pause` y `dispose`. No hay pantalla de unión:
+el `matchId` y el usuario vienen del Shell.
 
-To enable hot module reload, do `npm start -- --hmr`.
+**Independiente (solo desarrollo local).** En `http://localhost:8080` aparece una pantalla para
+escribir nombre, usuario y código de partida. El primer jugador genera un código y se lo pasa
+al segundo, que lo escribe en el mismo campo (sin presionar "Generar").
 
-To change dev server port, do `npm start -- --port 8888`.
+## Cómo correrlo localmente
 
-To change dev server host, do `npm start -- --host 127.0.0.1`
+Necesita el backend corriendo en `http://localhost:5095` (`dotnet run --project src/BattleHub.Memory.Api`).
 
-**PS:** You could mix all the flags as well, `npm start -- --host 127.0.0.1 --port 7070 --open --hmr`
+```bash
+npm ci
+npm start          # http://localhost:8080 (y http://localhost:8080/remoteEntry.js para el Shell)
+```
 
-For long time aurelia-cli user, you can still use `au run` with those arguments like `au run --env prod --open --hmr`. But `au run` now simply executes `npm start` command.
+### Probarlo dentro del Shell
 
-## Build for production
+1. En `battlehub-shell/config/remotes.local.json` agregar (o pedirle al Equipo 3 que agregue):
+   ```json
+   "memory": { "scope": "memoryGame", "url": "http://localhost:8080/remoteEntry.js", "module": "./GameModule" }
+   ```
+2. Levantar el Shell (`npm start`, puerto 4000). El backend acepta CORS desde `localhost:4000`.
 
-Run `npm run build`, or the old way `au build --env prod`.
+## Scripts
 
-## Unit tests
+| Script | Qué hace |
+|---|---|
+| `npm start` | Servidor de desarrollo en el puerto 8080 |
+| `npm run build` | Build de producción en `dist/` (usa `config/environment.production.json`) |
+| `npm run lint` | ESLint sobre `src` y `test` |
+| `npm test` | Pruebas unitarias con Jest (`test/**/*.spec.ts`) |
+| `npm run analyze` | Build de producción con Webpack Bundle Analyzer |
 
-Run `au test` (or `au jest`).
+## Configuración
 
-To run in watch mode, `au test --watch` or `au jest --watch`.
+`config/environment.json` define `apiBaseUrl` y `hubBaseUrl` (por defecto `http://localhost:5095`).
+En producción se reemplaza por `config/environment.production.json`.
