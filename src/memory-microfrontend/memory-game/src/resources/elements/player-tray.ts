@@ -1,4 +1,4 @@
-import {bindable} from 'aurelia-framework';
+import {bindable} from 'aurelia';
 import {PlayerViewModel} from '../../state/memory-game-state';
 
 export class PlayerTray {

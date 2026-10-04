@@ -1,0 +1,7 @@
+<div class="memory-game memory-game--embedded" style.bind="backgroundStyle">
+  <p class="memory-game__waiting" if.bind="state.phase === 'join'">Conectando con la partida...</p>
+  <p class="memory-game__waiting" if.bind="state.phase === 'waiting-for-opponent'">
+    Esperando al rival para la partida <strong>${state.matchId}</strong>...
+  </p>
+  <game-view if.bind="state.phase !== 'join' && state.phase !== 'waiting-for-opponent'"></game-view>
+</div>

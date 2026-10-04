@@ -1,8 +1,6 @@
-<template>
-  <require from="./player-tray.css"></require>
+<import from="./player-tray.css"></import>
 
-  <div class="player-tray ${isCurrentTurn ? 'player-tray--active' : ''} ${mirrored ? 'player-tray--mirrored' : ''}">
-    <p class="player-tray__name">${player ? player.displayName : 'Esperando...'}</p>
-    <p class="player-tray__count">${player ? player.matchedPairs : 0} parejas</p>
-  </div>
-</template>
+<div class="memory-game-player-tray ${isCurrentTurn ? 'memory-game-player-tray--active' : ''} ${mirrored ? 'memory-game-player-tray--mirrored' : ''}">
+  <p class="memory-game-player-tray__name">${player ? player.displayName : 'Esperando...'}</p>
+  <p class="memory-game-player-tray__count">${player ? player.matchedPairs : 0} parejas</p>
+</div>

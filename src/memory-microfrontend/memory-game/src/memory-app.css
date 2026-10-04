@@ -1,0 +1,29 @@
+.memory-game {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #071b2e;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Dentro del Shell el juego ocupa solo el área asignada (contrato 03, sección 7). */
+.memory-game--embedded {
+  min-height: 700px;
+}
+
+.memory-game__waiting {
+  margin: 4rem auto 0;
+  padding: 2rem;
+  max-width: 24rem;
+  background: rgb(0 0 0 / 55%);
+  border-radius: 1rem;
+  color: #fff;
+  text-align: center;
+}

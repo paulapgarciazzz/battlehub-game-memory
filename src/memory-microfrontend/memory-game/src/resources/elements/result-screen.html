@@ -1,23 +1,22 @@
-<template>
-  <require from="./result-screen.css"></require>
+<import from="./result-screen.css"></import>
 
-  <div class="result-screen">
-    <h2 if.bind="state.isDraw">¡Empate!</h2>
-    <h2 if.bind="!state.isDraw">
-      ${amIWinner ? '¡Ganaste!' : (winner ? winner.displayName + ' ganó la partida' : 'Partida finalizada')}
-    </h2>
+<div class="memory-game-result-screen">
+  <h2 if.bind="state.isDraw">¡Empate!</h2>
+  <h2 if.bind="!state.isDraw">
+    ${amIWinner ? '¡Ganaste!' : (winner ? winner.displayName + ' ganó la partida' : 'Partida finalizada')}
+  </h2>
 
-    <ul class="result-screen__scores">
-      <li repeat.for="player of state.players">
-        ${player.displayName}: ${player.matchedPairs} parejas
-      </li>
-    </ul>
+  <ul class="memory-game-result-screen__scores">
+    <li repeat.for="player of state.players">
+      ${player.displayName}: ${player.matchedPairs} parejas
+    </li>
+  </ul>
 
-    <p class="result-screen__save-error" if.bind="state.resultSaveError">
-      No se pudo guardar el resultado: ${state.resultSaveError}
-      <button type="button" click.trigger="retrySave()">Reintentar</button>
-    </p>
+  <p class="memory-game-result-screen__save-error" if.bind="state.resultSaveError">
+    No se pudo guardar el resultado: ${state.resultSaveError}
+    <button type="button" click.trigger="retrySave()">Reintentar</button>
+  </p>
 
-    <button type="button" class="result-screen__play-again" click.trigger="playAgain()">Jugar de nuevo</button>
-  </div>
-</template>
+  <!-- Dentro del Shell no hay "Jugar de nuevo": el Shell decide a dónde volver. -->
+  <button type="button" class="memory-game-result-screen__play-again" click.trigger="playAgain()" if.bind="!state.embedded">Jugar de nuevo</button>
+</div>

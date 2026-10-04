@@ -1,4 +1,4 @@
-.turn-indicator {
+.memory-game-turn-indicator {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -7,25 +7,25 @@
   margin-bottom: 1rem;
 }
 
-.turn-indicator__label {
+.memory-game-turn-indicator__label {
   margin: 0;
 }
 
-.turn-indicator__bar {
+.memory-game-turn-indicator__bar {
   width: 12rem;
   height: 0.5rem;
   border-radius: 0.25rem;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   overflow: hidden;
 }
 
-.turn-indicator__bar-fill {
+.memory-game-turn-indicator__bar-fill {
   height: 100%;
   background: #ffb703;
   transition: width 0.2s linear;
 }
 
-.turn-indicator__seconds {
+.memory-game-turn-indicator__seconds {
   margin: 0;
   font-size: 0.85rem;
 }

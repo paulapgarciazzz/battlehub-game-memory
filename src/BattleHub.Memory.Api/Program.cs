@@ -36,7 +36,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(DevCorsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:8080")
+        // 4003: microfrontend de Memory en modo independiente (ADR-003 §2).
+        // 4000: Shell de BattleHub, que carga el juego por Module Federation
+        // (el código del juego corre con el origen del Shell).
+        policy.WithOrigins("http://localhost:4003", "http://localhost:4000")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

@@ -1,0 +1,5 @@
+<import from="./game-board"></import>
+<import from="./result-screen"></import>
+
+<game-board if.bind="state.phase === 'preview' || state.phase === 'playing'"></game-board>
+<result-screen if.bind="state.phase === 'finished'"></result-screen>

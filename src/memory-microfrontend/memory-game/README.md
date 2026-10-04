@@ -1,33 +1,71 @@
 # `memory-game`
 
-This project is bootstrapped by [aurelia-cli](https://github.com/aurelia/cli).
+Microfrontend del juego de Memoria (Equipo 6) en **Aurelia 2**, integrado al Shell de BattleHub
+con **Webpack Module Federation**, según
+[ADR-003](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-003-integracion-module-federation-aurelia-shell.md).
 
-For more information, go to https://aurelia.io/docs/cli/webpack
+## Datos de integración (ADR-003)
 
-## Run dev app
+| Dato | Valor |
+|---|---|
+| Node.js | 24 LTS (`>=24.11.0 <25`, ver `.nvmrc`) |
+| `aurelia` y `@aurelia/*` | `2.0.0-rc.2` exacta |
+| Webpack | 5 |
+| Nombre del remote | `memoryGame` |
+| Módulo expuesto | `./GameModule` (elemento `memory-game-module`) |
+| Puerto local | `4003` → `http://localhost:4003/remoteEntry.js` |
 
-Run `npm start`, then open `http://localhost:8080`
+`mf-shared.js` y `src/game-contracts.ts` son copias idénticas de la plantilla del ADR-003:
+no se modifican. Aurelia se comparte como `singleton` con `strictVersion`, así que si la versión
+no coincide con la del Shell, el juego no carga.
 
-You can change the standard webpack configurations from CLI easily with something like this: `npm start -- --open --port 8888`. However, it is better to change the respective npm scripts or `webpack.config.js` with these options, as per your need.
+Todas las clases CSS llevan el prefijo `memory-game` (ADR-003 §8), con BEM:
+`memory-game-bloque__elemento--modificador`. Stylelint lo verifica.
 
-To enable Webpack Bundle Analyzer, do `npm run analyze` (production build).
+## Dos formas de ejecutarlo
 
-To enable hot module reload, do `npm start -- --hmr`.
+**Dentro del Shell (BattleHub).** El Shell carga `./GameModule` desde `remoteEntry.js` y le entrega
+el contexto (`matchId`, `gameType`, `currentUser`), según el contrato 03 (secciones 5 y 6).
+`GameModule` implementa `initialize`, `start`, `pause` y `dispose`. No hay pantalla de unión:
+el `matchId` y el usuario vienen del Shell.
 
-To change dev server port, do `npm start -- --port 8888`.
+Como la partida es en tiempo real, `pause()` no detiene el servidor (el turno y su temporizador
+siguen corriendo): solo bloquea las jugadas de este jugador y muestra un aviso. `start()` quita
+la pausa sin volver a unirse.
 
-To change dev server host, do `npm start -- --host 127.0.0.1`
+**Independiente (solo desarrollo local).** En `http://localhost:4003` aparece una pantalla para
+escribir nombre, usuario y código de partida. El primer jugador genera un código y se lo pasa
+al segundo, que lo escribe en el mismo campo (sin presionar "Generar").
 
-**PS:** You could mix all the flags as well, `npm start -- --host 127.0.0.1 --port 7070 --open --hmr`
+## Cómo correrlo localmente
 
-For long time aurelia-cli user, you can still use `au run` with those arguments like `au run --env prod --open --hmr`. But `au run` now simply executes `npm start` command.
+Necesita el backend corriendo en `http://localhost:5095` (`dotnet run --project src/BattleHub.Memory.Api`).
 
-## Build for production
+```bash
+npm ci
+npm start          # http://localhost:4003 (y http://localhost:4003/remoteEntry.js para el Shell)
+```
 
-Run `npm run build`, or the old way `au build --env prod`.
+### Probarlo dentro del Shell
 
-## Unit tests
+1. En `battlehub-shell/config/remotes.local.json` debe estar (lo agrega el Equipo 3):
+   ```json
+   "memory": { "scope": "memoryGame", "url": "http://localhost:4003/remoteEntry.js", "module": "./GameModule" }
+   ```
+2. Levantar el Shell (`npm start`, puerto 4000). El backend acepta CORS desde `localhost:4000`
+   y `localhost:4003`.
 
-Run `au test` (or `au jest`).
+## Scripts
 
-To run in watch mode, `au test --watch` or `au jest --watch`.
+| Script | Qué hace |
+|---|---|
+| `npm start` | Servidor de desarrollo en el puerto 4003 |
+| `npm run build` | Build de producción en `dist/` (usa `config/environment.production.json`) |
+| `npm run lint` | ESLint (`src` y `test`) y Stylelint (`src/**/*.css`) |
+| `npm test` | Lint y luego las pruebas unitarias con Jest (`test/**/*.spec.ts`) |
+| `npm run analyze` | Build de producción con Webpack Bundle Analyzer |
+
+## Configuración
+
+`config/environment.json` define `apiBaseUrl` y `hubBaseUrl` (por defecto `http://localhost:5095`).
+En producción se reemplaza por `config/environment.production.json`.

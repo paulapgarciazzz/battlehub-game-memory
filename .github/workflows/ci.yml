@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: src/memory-microfrontend
+        working-directory: src/memory-microfrontend/memory-game
     steps:
       - uses: actions/checkout@v4
 
@@ -60,25 +60,31 @@ jobs:
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No se encontró package.json en memory-microfrontend todavía. Se omite build/test."
+            echo "::warning::No se encontró package.json en memory-microfrontend/memory-game. Se omite build/test."
           fi
 
       - name: Setup Node
         if: steps.check-node.outputs.found == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 24 LTS desde .nvmrc (ADR-003 §1).
+          node-version-file: src/memory-microfrontend/memory-game/.nvmrc
           cache: 'npm'
-          cache-dependency-path: src/memory-microfrontend/package-lock.json
+          cache-dependency-path: src/memory-microfrontend/memory-game/package-lock.json
 
       - name: Install
         if: steps.check-node.outputs.found == 'true'
         run: npm ci
 
+      - name: Lint
+        if: steps.check-node.outputs.found == 'true'
+        run: npm run lint
+
       - name: Build
         if: steps.check-node.outputs.found == 'true'
         run: npm run build
 
+      # npm test también corre el lint (pretest); aquí ya se corrió arriba.
       - name: Test
         if: steps.check-node.outputs.found == 'true'
-        run: npm test
+        run: npx jest --ci

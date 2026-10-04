@@ -1,5 +1,4 @@
-import {autoinject, singleton} from 'aurelia-framework';
-import {EventAggregator} from 'aurelia-event-aggregator';
+import {IEventAggregator, resolve, singleton} from 'aurelia';
 import {MemoryHubService, MemoryHubEvents} from './memory-hub.service';
 import {MemoryHttpService} from './memory-http.service';
 import {MemoryGameState} from '../state/memory-game-state';
@@ -14,15 +13,14 @@ import {
 const NO_MATCH_REVEAL_DELAY_MS = 900;
 const TURN_TIMEOUT_MS = 10_000;
 
-@autoinject()
 @singleton()
 export class MemoryGameOrchestrator {
-  constructor(
-    private ea: EventAggregator,
-    private hub: MemoryHubService,
-    private http: MemoryHttpService,
-    private state: MemoryGameState
-  ) {
+  private readonly ea = resolve(IEventAggregator);
+  private readonly hub = resolve(MemoryHubService);
+  private readonly http = resolve(MemoryHttpService);
+  private readonly state = resolve(MemoryGameState);
+
+  constructor() {
     this.ea.subscribe(MemoryHubEvents.PlayerJoined, (msg: PlayerJoinedMessage) => this.onPlayerJoined(msg));
     this.ea.subscribe(MemoryHubEvents.GameReady, (msg: GameReadyMessage) => this.onGameReady(msg));
     this.ea.subscribe(MemoryHubEvents.PreviewFinished, (msg: PreviewFinishedMessage) => this.onPreviewFinished(msg));
@@ -48,7 +46,7 @@ export class MemoryGameOrchestrator {
   public async flipCard(cardId: number): Promise<void> {
     const card = this.state.cards[cardId];
 
-    if (!this.state.isMyTurn || !card || card.matched || card.faceUp) {
+    if (this.state.paused || !this.state.isMyTurn || !card || card.matched || card.faceUp) {
       return;
     }
 
@@ -61,6 +59,16 @@ export class MemoryGameOrchestrator {
   }
 
   public async playAgain(): Promise<void> {
+    await this.leaveMatch();
+  }
+
+  /**
+   * Sale de la partida: corta la conexión con el hub y limpia el estado.
+   * La usa "Jugar de nuevo" (modo independiente) y GameModule.dispose()
+   * (dentro del Shell), porque los servicios son singleton y sobreviven
+   * entre una partida y la siguiente.
+   */
+  public async leaveMatch(): Promise<void> {
     await this.hub.disconnect();
     this.state.reset();
   }

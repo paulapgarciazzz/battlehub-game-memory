@@ -1,4 +1,4 @@
-import {singleton} from 'aurelia-framework';
+import {singleton} from 'aurelia';
 
 export type GamePhase = 'join' | 'waiting-for-opponent' | 'preview' | 'playing' | 'finished';
 
@@ -33,6 +33,14 @@ export class MemoryGameState {
   public isDraw = false;
   public resultSaveError: string | null = null;
 
+  // true cuando el juego corre dentro del Shell (GameModule). En ese caso no
+  // hay pantalla de unión ni "Jugar de nuevo": el Shell controla la partida.
+  public embedded = false;
+
+  // El Shell pidió pausar el juego. La partida sigue en el servidor (es en
+  // tiempo real), así que solo se bloquean las jugadas de este jugador.
+  public paused = false;
+
   public get isMyTurn(): boolean {
     return this.currentPlayerId === this.myUserId;
   }
@@ -64,6 +72,7 @@ export class MemoryGameState {
     this.winnerUserId = null;
     this.isDraw = false;
     this.resultSaveError = null;
+    this.paused = false;
   }
 
   private static emptyBoard(): CardViewModel[] {

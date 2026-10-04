@@ -1,23 +1,21 @@
-import {autoinject} from 'aurelia-framework';
+import {resolve} from 'aurelia';
 import {MemoryGameState} from '../../state/memory-game-state';
 
 const TICK_MS = 200;
 const TURN_TOTAL_MS = 10_000;
 
-@autoinject()
 export class TurnIndicator {
+  public readonly state = resolve(MemoryGameState);
   public remainingSeconds = 10;
   public remainingRatio = 1;
   private intervalId: number | null = null;
-
-  constructor(public state: MemoryGameState) {}
 
   public attached(): void {
     this.intervalId = window.setInterval(() => this.tick(), TICK_MS);
     this.tick();
   }
 
-  public detached(): void {
+  public detaching(): void {
     if (this.intervalId !== null) {
       window.clearInterval(this.intervalId);
       this.intervalId = null;
