@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Linq;
 using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Domain;
@@ -14,14 +13,16 @@ public class MemoryHub : Hub
 {
     private readonly MemoryGameService _gameService;
 
-    // Guarda un temporizador por cada partida.
-    private readonly ConcurrentDictionary<
-        string,
-        CancellationTokenSource> _turnTimers = new();
+    // El Hub es transient: todo lo que tiene que sobrevivir a la llamada
+    // (como el temporizador de turno) vive en servicios singleton.
+    private readonly TurnTimerService _turnTimerService;
 
-    public MemoryHub(MemoryGameService gameService)
+    public MemoryHub(
+        MemoryGameService gameService,
+        TurnTimerService turnTimerService)
     {
         _gameService = gameService;
+        _turnTimerService = turnTimerService;
     }
 
     /// <summary>
@@ -118,9 +119,7 @@ public class MemoryHub : Hub
             });
 
         // Comienza el temporizador del primer turno.
-        StartTurnTimer(
-            matchId,
-            session);
+        _turnTimerService.Start(session);
     }
 
     /// <summary>
@@ -182,87 +181,7 @@ public class MemoryHub : Hub
         if (!session.IsFinished
             && result.Cards.Count == 2)
         {
-            StartTurnTimer(
-                matchId,
-                session);
-        }
-    }
-
-    /// <summary>
-    /// Inicia el temporizador de 10 segundos
-    /// para el turno actual.
-    /// </summary>
-    private void StartTurnTimer(
-        string matchId,
-        GameSession session)
-    {
-        // Cancelamos el temporizador anterior de esta partida.
-        if (_turnTimers.TryRemove(
-            matchId,
-            out var oldTimer))
-        {
-            oldTimer.Cancel();
-            oldTimer.Dispose();
-        }
-
-        var cancellationTokenSource =
-            new CancellationTokenSource();
-
-        _turnTimers[matchId] =
-            cancellationTokenSource;
-
-        _ = RunTurnTimer(
-            matchId,
-            session,
-            cancellationTokenSource.Token);
-    }
-
-    /// <summary>
-    /// Espera 10 segundos y cambia el turno
-    /// si el jugador no realizó la jugada.
-    /// </summary>
-    private async Task RunTurnTimer(
-        string matchId,
-        GameSession session,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(
-                TimeSpan.FromSeconds(
-                    GameSession.TurnTimeoutSeconds),
-                cancellationToken);
-
-            if (session.IsFinished)
-                return;
-
-            var previousPlayer =
-                session.CurrentPlayer;
-
-            session.ForfeitTurnByTimeout();
-
-            await Clients.Group(matchId).SendAsync(
-                "TurnTimeout",
-                new
-                {
-                    MatchId = matchId,
-                    PreviousPlayerId =
-                        previousPlayer.UserId,
-                    CurrentPlayerId =
-                        session.CurrentPlayer.UserId,
-                    TurnTimeoutSeconds =
-                        GameSession.TurnTimeoutSeconds
-                });
-
-            // Iniciamos los 10 segundos para el siguiente jugador.
-            StartTurnTimer(
-                matchId,
-                session);
-        }
-        catch (TaskCanceledException)
-        {
-            // El temporizador fue cancelado porque
-            // el jugador realizó una jugada válida.
+            _turnTimerService.Start(session);
         }
     }
 
