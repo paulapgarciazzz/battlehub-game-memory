@@ -14,15 +14,21 @@ public class MemoryHub : Hub
     private readonly MemoryGameService _gameService;
 
     // El Hub es transient: todo lo que tiene que sobrevivir a la llamada
-    // (como el temporizador de turno) vive en servicios singleton.
+    // (temporizadores, guardado del resultado) vive en servicios singleton.
     private readonly TurnTimerService _turnTimerService;
+    private readonly MatchResultRecorder _matchResultRecorder;
+    private readonly ILogger<MemoryHub> _logger;
 
     public MemoryHub(
         MemoryGameService gameService,
-        TurnTimerService turnTimerService)
+        TurnTimerService turnTimerService,
+        MatchResultRecorder matchResultRecorder,
+        ILogger<MemoryHub> logger)
     {
         _gameService = gameService;
         _turnTimerService = turnTimerService;
+        _matchResultRecorder = matchResultRecorder;
+        _logger = logger;
     }
 
     /// <summary>
@@ -183,14 +189,35 @@ public class MemoryHub : Hub
                 IsFinished = result.IsFinished
             });
 
+        if (result.IsFinished)
+        {
+            _turnTimerService.Stop(matchId);
+
+            // El resultado lo guarda el backend del juego (contrato 04).
+            // Si la BD falla, se registra en el log pero no se rompe la
+            // jugada: los clientes ya recibieron CardFlipped.
+            try
+            {
+                await _matchResultRecorder.RecordAsync(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "No se pudo guardar el resultado de la partida {MatchId}.",
+                    matchId);
+            }
+
+            return;
+        }
+
         // Dos cartas en el resultado significa que se resolvió un turno
         // completo (hubo pareja o no la hubo). En ambos casos empieza un
         // turno nuevo (el del rival, o uno extra para el mismo jugador si
         // acertó la pareja), así que hay que reiniciar los 10 segundos.
         // Si en cambio esta fue solo la primera carta del turno, el
         // temporizador original sigue corriendo sin tocarse.
-        if (!result.IsFinished
-            && result.Cards.Count == 2)
+        if (result.Cards.Count == 2)
         {
             _turnTimerService.Start(session);
         }

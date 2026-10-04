@@ -18,6 +18,7 @@ builder.Services.AddScoped<IGameResultService, GameResultService>();
 builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
 builder.Services.AddSingleton<MemoryGameService>();
 builder.Services.AddSingleton<TurnTimerService>();
+builder.Services.AddSingleton<MatchResultRecorder>();
 
 // Controllers (sin esto, todo /api/games/memory responde 404)
 builder.Services.AddControllers();
