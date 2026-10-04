@@ -77,6 +77,16 @@ describe('MemoryGameOrchestrator', () => {
     expect(hub.flipCard).not.toHaveBeenCalled();
   });
 
+  it('no envía jugadas cuando el juego está en pausa', async () => {
+    const { hub, orchestrator, state } = setup();
+    startPlaying(state);
+    state.paused = true;
+
+    await orchestrator.flipCard(0);
+
+    expect(hub.flipCard).not.toHaveBeenCalled();
+  });
+
   it('envía la jugada al hub cuando es mi turno', async () => {
     const { hub, orchestrator, state } = setup();
     startPlaying(state);

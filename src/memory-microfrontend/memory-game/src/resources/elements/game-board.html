@@ -8,6 +8,10 @@
     <p>Memorizá las cartas... la partida empieza en unos segundos</p>
   </div>
 
+  <div class="game-board__overlay" if.bind="state.paused && state.phase === 'playing'">
+    <p>Juego en pausa. La partida sigue corriendo para tu rival.</p>
+  </div>
+
   <turn-indicator if.bind="state.phase === 'playing'"></turn-indicator>
 
   <div class="game-board__layout">

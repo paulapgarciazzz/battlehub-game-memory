@@ -67,6 +67,7 @@ module.exports = function (env, { analyze }) {
       new ModuleFederationPlugin({
         name: 'memoryGame',
         filename: 'remoteEntry.js',
+        exposes: { './GameModule': './src/game-module' },
         shared: sharedDeps
       }),
       // En producción se usa config/environment.production.json.

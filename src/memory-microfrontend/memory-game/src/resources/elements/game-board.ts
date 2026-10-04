@@ -7,7 +7,7 @@ export class GameBoard {
   public readonly state = resolve(MemoryGameState);
 
   public get isCardDisabled(): boolean {
-    return this.state.phase !== 'playing' || !this.state.isMyTurn;
+    return this.state.phase !== 'playing' || !this.state.isMyTurn || this.state.paused;
   }
 
   public get myPlayer(): PlayerViewModel | null {

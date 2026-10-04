@@ -46,7 +46,7 @@ export class MemoryGameOrchestrator {
   public async flipCard(cardId: number): Promise<void> {
     const card = this.state.cards[cardId];
 
-    if (!this.state.isMyTurn || !card || card.matched || card.faceUp) {
+    if (this.state.paused || !this.state.isMyTurn || !card || card.matched || card.faceUp) {
       return;
     }
 
@@ -59,6 +59,16 @@ export class MemoryGameOrchestrator {
   }
 
   public async playAgain(): Promise<void> {
+    await this.leaveMatch();
+  }
+
+  /**
+   * Sale de la partida: corta la conexión con el hub y limpia el estado.
+   * La usa "Jugar de nuevo" (modo independiente) y GameModule.dispose()
+   * (dentro del Shell), porque los servicios son singleton y sobreviven
+   * entre una partida y la siguiente.
+   */
+  public async leaveMatch(): Promise<void> {
     await this.hub.disconnect();
     this.state.reset();
   }

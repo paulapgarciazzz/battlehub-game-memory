@@ -17,5 +17,6 @@
     <button type="button" click.trigger="retrySave()">Reintentar</button>
   </p>
 
-  <button type="button" class="result-screen__play-again" click.trigger="playAgain()">Jugar de nuevo</button>
+  <!-- Dentro del Shell no hay "Jugar de nuevo": el Shell decide a dónde volver. -->
+  <button type="button" class="result-screen__play-again" click.trigger="playAgain()" if.bind="!state.embedded">Jugar de nuevo</button>
 </div>
