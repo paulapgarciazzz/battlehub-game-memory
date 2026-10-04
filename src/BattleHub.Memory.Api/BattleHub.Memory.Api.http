@@ -1,6 +1,26 @@
 @BattleHub.Memory.Api_HostAddress = http://localhost:5095
+@matchId = match-001
+@userId = user-001
 
-GET {{BattleHub.Memory.Api_HostAddress}}/weatherforecast/
+### Registrar el resultado de una partida finalizada (idempotente)
+POST {{BattleHub.Memory.Api_HostAddress}}/api/games/memory/results
+Content-Type: application/json
+Accept: application/json
+
+{
+  "matchId": "{{matchId}}"
+}
+
+### Obtener el resultado detallado de una partida
+GET {{BattleHub.Memory.Api_HostAddress}}/api/games/memory/results/{{matchId}}
+Accept: application/json
+
+### Historial de partidas de un jugador
+GET {{BattleHub.Memory.Api_HostAddress}}/api/games/memory/players/{{userId}}/history
+Accept: application/json
+
+### Estadísticas agregadas de un jugador
+GET {{BattleHub.Memory.Api_HostAddress}}/api/games/memory/players/{{userId}}/stats
 Accept: application/json
 
 ###

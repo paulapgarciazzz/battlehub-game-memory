@@ -15,7 +15,7 @@ public class MemoryController : ControllerBase
         _historyService = historyService;
     }
 
-    [HttpGet("history/{userId}")]
+    [HttpGet("players/{userId}/history")]
     public async Task<ActionResult<List<MemoryGameHistoryDto>>> GetHistory(
         string userId,
         CancellationToken ct)
@@ -34,5 +34,25 @@ public class MemoryController : ControllerBase
         }).ToList();
 
         return Ok(result);
+    }
+
+    [HttpGet("players/{userId}/stats")]
+    public async Task<ActionResult<MemoryPlayerStatsDto>> GetStats(
+        string userId,
+        CancellationToken ct)
+    {
+        var stats = await _historyService.GetStatsByPlayerAsync(userId, ct);
+
+        return Ok(new MemoryPlayerStatsDto
+        {
+            UserId = stats.UserId,
+            GamesPlayed = stats.GamesPlayed,
+            Wins = stats.Wins,
+            Losses = stats.Losses,
+            Draws = stats.Draws,
+            TotalPairs = stats.TotalPairs,
+            BestScore = stats.BestScore,
+            AverageScore = stats.AverageScore
+        });
     }
 }
