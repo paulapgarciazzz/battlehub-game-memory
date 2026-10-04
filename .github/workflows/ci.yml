@@ -67,8 +67,8 @@ jobs:
         if: steps.check-node.outputs.found == 'true'
         uses: actions/setup-node@v4
         with:
-          # Node 24 LTS, igual que el Shell (ADR-003).
-          node-version: '24'
+          # Node 24 LTS desde .nvmrc (ADR-003 §1).
+          node-version-file: src/memory-microfrontend/memory-game/.nvmrc
           cache: 'npm'
           cache-dependency-path: src/memory-microfrontend/memory-game/package-lock.json
 
@@ -84,6 +84,7 @@ jobs:
         if: steps.check-node.outputs.found == 'true'
         run: npm run build
 
+      # npm test también corre el lint (pretest); aquí ya se corrió arriba.
       - name: Test
         if: steps.check-node.outputs.found == 'true'
-        run: npm test
+        run: npx jest --ci

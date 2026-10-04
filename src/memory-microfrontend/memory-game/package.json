@@ -42,6 +42,7 @@
     "lint:js": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint": "npm run lint:js && npm run lint:css",
+    "pretest": "npm run lint",
     "start": "webpack serve",
     "build": "webpack --env production",
     "build:dev": "webpack",
