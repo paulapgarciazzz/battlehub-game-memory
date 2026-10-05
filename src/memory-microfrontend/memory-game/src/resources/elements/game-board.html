@@ -12,6 +12,8 @@
     <p>Juego en pausa. La partida sigue corriendo para tu rival.</p>
   </div>
 
+  <p if.bind="!state.connectionReady">Reconectando con la partida. Espera la actualización del servidor.</p>
+
   <turn-indicator if.bind="state.phase === 'playing'"></turn-indicator>
 
   <div class="memory-game-board__layout">

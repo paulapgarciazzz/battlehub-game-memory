@@ -40,6 +40,7 @@ export class MemoryGameState {
   // El Shell pidió pausar el juego. La partida sigue en el servidor (es en
   // tiempo real), así que solo se bloquean las jugadas de este jugador.
   public paused = false;
+  public connectionReady = true;
 
   public get isMyTurn(): boolean {
     return this.currentPlayerId === this.myUserId;
@@ -73,6 +74,7 @@ export class MemoryGameState {
     this.isDraw = false;
     this.resultSaveError = null;
     this.paused = false;
+    this.connectionReady = true;
   }
 
   private static emptyBoard(): CardViewModel[] {

@@ -30,8 +30,8 @@ export class JoinScreen {
 
     try {
       await this.orchestrator.joinMatch(this.matchId.trim(), this.userId.trim(), this.displayName.trim());
-    } catch {
-      this.error = 'No se pudo conectar con el servidor. Intentá de nuevo.';
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'No se pudo conectar con el servidor.';
     } finally {
       this.joining = false;
     }

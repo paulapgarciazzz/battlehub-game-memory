@@ -5,7 +5,7 @@ import { MemoryStandalone } from '../src/memory-standalone';
 import { MemoryGameState } from '../src/state/memory-game-state';
 import { createFakeHub, createFakeHttp, createTestContainer, fakeRegistrations } from './fakes';
 
-const context: GameContext = { matchId: 'match-001', gameType: 'memory', currentUser: { id: 'user-001', displayName: 'Ana' } };
+const context: GameContext = { matchId: 'match-001', gameType: 'memory', currentUser: { id: 'user-001', displayName: 'Ana' }, getAccessToken: async () => 'memory-token', getMatchmakingAccessToken: async () => 'room-token' };
 
 function setup() {
   const hub = createFakeHub();
@@ -25,7 +25,7 @@ describe('GameModule (contrato con el Shell)', () => {
 
     expect(state.embedded).toBe(true);
     expect(hub.connect).toHaveBeenCalledTimes(1);
-    expect(hub.joinMatch).toHaveBeenCalledWith('match-001', 'user-001', 'Ana');
+    expect(hub.joinMatch).toHaveBeenCalledWith('match-001');
   });
 
   it('al reanudar (start después de pause) no vuelve a unirse', async () => {

@@ -1,10 +1,15 @@
-﻿using BattleHub.Memory.Api.DTOs;
+using BattleHub.Memory.Api.DTOs;
 using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Data.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using BattleHub.Memory.Api.Auth;
+using BattleHub.Memory.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace BattleHub.Memory.Api.Controllers;
 
+[Authorize(Policy = MemoryAuth.Play)]
 [ApiController]
 [Route("api/games/memory")]
 public class MemoryGameResultsController : ControllerBase
@@ -12,15 +17,17 @@ public class MemoryGameResultsController : ControllerBase
     private readonly MemoryGameService _gameService;
     private readonly MatchResultRecorder _matchResultRecorder;
     private readonly IGameResultService _gameResultService;
+    private readonly IHubContext<MemoryHub> _hub;
 
     public MemoryGameResultsController(
         MemoryGameService gameService,
         MatchResultRecorder matchResultRecorder,
-        IGameResultService gameResultService)
+        IGameResultService gameResultService, IHubContext<MemoryHub> hub)
     {
         _gameService = gameService;
         _matchResultRecorder = matchResultRecorder;
         _gameResultService = gameResultService;
+        _hub = hub;
     }
 
     /// <summary>
@@ -57,6 +64,7 @@ public class MemoryGameResultsController : ControllerBase
                 });
             }
 
+            if (!savedResult.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
             return Ok(new
             {
                 ResultId = savedResult.Id,
@@ -65,6 +73,7 @@ public class MemoryGameResultsController : ControllerBase
             });
         }
 
+        if (!session.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
         if (!session.IsFinished)
         {
             return BadRequest(new
@@ -77,6 +86,8 @@ public class MemoryGameResultsController : ControllerBase
             session,
             ct);
 
+        _gameService.MarkSaved(session.MatchId);
+        await _hub.Clients.Group(session.MatchId).SendAsync("ResultSaved", new { session.MatchId }, ct);
         return Ok(new
         {
             ResultId = resultId,
@@ -100,6 +111,7 @@ public class MemoryGameResultsController : ControllerBase
             });
         }
 
+        if (!result.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
         return Ok(new MemoryGameResultDto
         {
             ResultId = result.Id,

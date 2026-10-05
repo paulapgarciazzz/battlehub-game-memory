@@ -93,6 +93,6 @@ describe('MemoryGameOrchestrator', () => {
 
     await orchestrator.flipCard(3);
 
-    expect((hub as FakeHub).flipCard).toHaveBeenCalledWith('m1', 'u1', 3);
+    expect((hub as FakeHub).flipCard).toHaveBeenCalledWith('m1', 3);
   });
 });

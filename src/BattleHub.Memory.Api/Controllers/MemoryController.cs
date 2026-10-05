@@ -1,9 +1,12 @@
-﻿using BattleHub.Memory.Api.DTOs;
+using BattleHub.Memory.Api.DTOs;
 using BattleHub.Memory.Data.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using BattleHub.Memory.Api.Auth;
 
 namespace BattleHub.Memory.Api.Controllers;
 
+[Authorize(Policy = MemoryAuth.Play)]
 [ApiController]
 [Route("api/games/memory")]
 public class MemoryController : ControllerBase
@@ -20,6 +23,7 @@ public class MemoryController : ControllerBase
         string userId,
         CancellationToken ct)
     {
+        if (userId != MemoryAuth.UserId(User)) return Forbid();
         var history = await _historyService.GetHistoryByPlayerAsync(userId, ct);
 
         var result = history.Select(p => new MemoryGameHistoryDto
@@ -41,6 +45,7 @@ public class MemoryController : ControllerBase
         string userId,
         CancellationToken ct)
     {
+        if (userId != MemoryAuth.UserId(User)) return Forbid();
         var stats = await _historyService.GetStatsByPlayerAsync(userId, ct);
 
         return Ok(new MemoryPlayerStatsDto

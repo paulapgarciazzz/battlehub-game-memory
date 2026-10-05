@@ -1,67 +1,40 @@
 using BattleHub.Memory.Data.DbContext;
+using BattleHub.Memory.Api.Auth;
 using BattleHub.Memory.Api.Hubs;
 using BattleHub.Memory.Api.Services;
+using BattleHub.Memory.Api.Matchmaking;
 using BattleHub.Memory.Data.Services;
 using Microsoft.EntityFrameworkCore;
 
-
 var builder = WebApplication.CreateBuilder(args);
-
-// Entity Framework Core
-builder.Services.AddDbContext<MemoryDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("MemoryDatabase")
-    ));
-
-// Servicios de la aplicación
+builder.Services.AddDbContext<MemoryDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("MemoryDatabase")));
 builder.Services.AddScoped<IGameResultService, GameResultService>();
 builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
 builder.Services.AddSingleton<MemoryGameService>();
 builder.Services.AddSingleton<TurnTimerService>();
 builder.Services.AddSingleton<MatchResultRecorder>();
-
-// Controllers (sin esto, todo /api/games/memory responde 404)
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHttpClient("matchmaking", client => client.Timeout = TimeSpan.FromSeconds(10)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddSingleton<IMatchmakingGateway>(services => new MatchmakingGateway(services.GetRequiredService<IHttpClientFactory>().CreateClient("matchmaking"), builder.Configuration, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<MatchmakingGateway>>()));
+builder.Services.AddHostedService<FinishWorker>();
+builder.Services.AddHostedService<ResultRetryWorker>();
+builder.Services.AddMemoryAuth(builder.Configuration);
 builder.Services.AddControllers();
-
-
-// OpenAPI
 builder.Services.AddOpenApi();
-
-// SignalR
 builder.Services.AddSignalR();
-
-const string DevCorsPolicy = "AllowAureliaDevClient";
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(DevCorsPolicy, policy =>
-    {
-        // 4003: microfrontend de Memory en modo independiente (ADR-003 §2).
-        // 4000: Shell de BattleHub, que carga el juego por Module Federation
-        // (el código del juego corre con el origen del Shell).
-        policy.WithOrigins("http://localhost:4003", "http://localhost:4000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
-
+builder.Services.AddCors(options => options.AddPolicy("MemoryCors", policy => policy.WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:4000", "http://localhost:4003"]).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
+if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
-    app.MapOpenApi();
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<MemoryDbContext>().Database.MigrateAsync();
 }
-
-app.UseCors(DevCorsPolicy);
-
-app.UseHttpsRedirection();
-
-app.MapHub<MemoryHub>("/hubs/memory");
-
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
+app.UseCors("MemoryCors");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
+app.MapHub<MemoryHub>("/hubs/memory").RequireAuthorization(MemoryAuth.Play);
 app.MapControllers();
-
 app.Run();
-
-// Permite usar WebApplicationFactory<Program> en pruebas de integración.
 public partial class Program;

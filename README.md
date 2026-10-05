@@ -49,3 +49,7 @@ Este repo implementa contratos definidos en `battlehub-contracts`:
 ## Equipo
 
 Equipo 6 — Juego de Memoria.
+
+## Integración local autenticada
+
+La copia de integración incorpora JWT, validación de sala, reconexión y avisos persistentes a Matchmaking. Consultar [configuración y comandos](docs/integracion-shell-auth0.md). Abrir partidas desde el Shell; los IDs escritos en el arnés no sustituyen Auth0. Estos cambios todavía no están publicados en el repo del Equipo 6.
