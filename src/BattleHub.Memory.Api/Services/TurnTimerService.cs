@@ -15,8 +15,14 @@ namespace BattleHub.Memory.Api.Services;
 public class TurnTimerService
 {
     private readonly IHubContext<MemoryHub> _hubContext;
+    // Hora UTC en que vence el turno actual de cada partida. Se manda a los
+    // clientes (TurnDeadline) para que el contador de 10 s coincida en las dos
+    // pantallas y se recupere al reconectar.
     private readonly ConcurrentDictionary<string, DateTimeOffset> _deadlines = new();
-    public DateTimeOffset? Deadline(string id) => _deadlines.TryGetValue(id, out var value) ? value : null;
+
+    /// <summary>Vencimiento del turno actual, o null si no hay temporizador.</summary>
+    public DateTimeOffset? Deadline(string id) =>
+        _deadlines.TryGetValue(id, out var value) ? value : null;
     private readonly ILogger<TurnTimerService> _logger;
 
     // Guarda un temporizador por cada partida.
@@ -129,7 +135,10 @@ public class TurnTimerService
                 return;
             }
 
+            // Se arma el temporizador del siguiente turno antes de avisar, así
+            // el evento ya lleva el vencimiento nuevo (TurnDeadline).
             Start(session);
+
             await _hubContext.Clients.Group(matchId).SendAsync(
                 "TurnTimeout",
                 new

@@ -21,27 +21,58 @@ export class MemoryGameOrchestrator {
   private readonly http = resolve(MemoryHttpService);
   private readonly state = resolve(MemoryGameState);
 
+  // Suscripciones al EventAggregator; se liberan en leaveMatch().
   private subscriptions: {dispose(): void}[] = [];
+
+  // Temporizadores que ocultan las cartas falladas; se cancelan al salir.
   private revealTimers = new Set<number>();
+
+  // Token para Matchmaking que entrega el Shell (ver GameModule.initialize).
   private roomToken: (() => Promise<string>) | null = null;
 
+  /** Recibe los proveedores de tokens del Shell y se los pasa al hub y a la API. */
   public configure(token: () => Promise<string>, roomToken: () => Promise<string>): void {
-    this.roomToken = roomToken; this.hub.configure(token, roomToken); this.http.configure(token);
+    this.roomToken = roomToken;
+    this.hub.configure(token, roomToken);
+    this.http.configure(token);
   }
 
-  constructor() { this.subscribe(); }
+  constructor() {
+    this.subscribe();
+  }
 
+  /** Se suscribe a los eventos del hub, una sola vez por partida. */
   private subscribe(): void {
-    if (this.subscriptions.length) return;
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.PlayerJoined, (msg: PlayerJoinedMessage) => this.onPlayerJoined(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.GameReady, (msg: GameReadyMessage) => this.onGameReady(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.PreviewFinished, (msg: PreviewFinishedMessage) => this.onPreviewFinished(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.CardFlipped, (msg: CardFlippedMessage) => this.onCardFlipped(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.TurnTimeout, (msg: TurnTimeoutMessage) => this.onTurnTimeout(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.StateSnapshot, (msg: StateSnapshotMessage) => this.onSnapshot(msg)));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.ResultSaved, (msg: {matchId: string}) => { if (msg.matchId === this.state.matchId) void this.confirmResult(); }));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.ResultSaveFailed, (msg: {matchId: string}) => { if (msg.matchId === this.state.matchId) this.state.resultSaveError = 'El servidor reintentará guardar el resultado.'; }));
-    this.subscriptions.push(this.ea.subscribe(MemoryHubEvents.ConnectionClosed, () => { this.state.connectionReady = false; }));
+    if (this.subscriptions.length) {
+      return;
+    }
+
+    this.subscriptions.push(
+      this.ea.subscribe(MemoryHubEvents.PlayerJoined, (msg: PlayerJoinedMessage) => this.onPlayerJoined(msg)),
+      this.ea.subscribe(MemoryHubEvents.GameReady, (msg: GameReadyMessage) => this.onGameReady(msg)),
+      this.ea.subscribe(MemoryHubEvents.PreviewFinished, (msg: PreviewFinishedMessage) => this.onPreviewFinished(msg)),
+      this.ea.subscribe(MemoryHubEvents.CardFlipped, (msg: CardFlippedMessage) => this.onCardFlipped(msg)),
+      this.ea.subscribe(MemoryHubEvents.TurnTimeout, (msg: TurnTimeoutMessage) => this.onTurnTimeout(msg)),
+      this.ea.subscribe(MemoryHubEvents.StateSnapshot, (msg: StateSnapshotMessage) => this.onSnapshot(msg)),
+
+      // El backend avisa que guardó el resultado: se confirma consultándolo.
+      this.ea.subscribe(MemoryHubEvents.ResultSaved, (msg: {matchId: string}) => {
+        if (msg.matchId === this.state.matchId) {
+          void this.confirmResult();
+        }
+      }),
+
+      this.ea.subscribe(MemoryHubEvents.ResultSaveFailed, (msg: {matchId: string}) => {
+        if (msg.matchId === this.state.matchId) {
+          this.state.resultSaveError = 'El servidor reintentará guardar el resultado.';
+        }
+      }),
+
+      // Sin conexión no se permiten jugadas hasta recibir un StateSnapshot.
+      this.ea.subscribe(MemoryHubEvents.ConnectionClosed, () => {
+        this.state.connectionReady = false;
+      })
+    );
   }
 
   public async joinMatch(matchId: string, userId: string, displayName: string): Promise<void> {
@@ -88,13 +119,28 @@ export class MemoryGameOrchestrator {
    * entre una partida y la siguiente.
    */
   public async leaveMatch(): Promise<void> {
-    for (const subscription of this.subscriptions) subscription.dispose();
+    for (const subscription of this.subscriptions) {
+      subscription.dispose();
+    }
     this.subscriptions = [];
-    for (const timer of this.revealTimers) window.clearTimeout(timer);
-    this.revealTimers.clear();
+
+    this.clearRevealTimers();
+
     await this.hub.disconnect();
-    this.hub.clearCredentials(); this.http.configure(null); this.roomToken = null;
+
+    // No se conservan los proveedores de tokens de esta partida.
+    this.hub.clearCredentials();
+    this.http.configure(null);
+    this.roomToken = null;
+
     this.state.reset();
+  }
+
+  private clearRevealTimers(): void {
+    for (const timer of this.revealTimers) {
+      window.clearTimeout(timer);
+    }
+    this.revealTimers.clear();
   }
 
   public async retrySaveResult(): Promise<void> {
@@ -179,7 +225,10 @@ export class MemoryGameOrchestrator {
       this.resetTurnDeadline(msg.turnDeadline);
 
       // El setTimeout queda solo para dejar ver las cartas antes de ocultarlas.
-      const timer = window.setTimeout(() => { this.revealTimers.delete(timer); this.hideUnmatchedCards(flippedIds); }, NO_MATCH_REVEAL_DELAY_MS);
+      const timer = window.setTimeout(() => {
+        this.revealTimers.delete(timer);
+        this.hideUnmatchedCards(flippedIds);
+      }, NO_MATCH_REVEAL_DELAY_MS);
       this.revealTimers.add(timer);
     }
   }
@@ -207,6 +256,8 @@ export class MemoryGameOrchestrator {
       cardIds.has(card.id) && !card.matched ? {...card, faceUp: false} : card);
   }
 
+  // Usa el vencimiento que manda el servidor (TurnDeadline, UTC) para que el
+  // contador coincida en las dos pantallas; si no viene, cuenta 10 s locales.
   private resetTurnDeadline(deadline?: string | null): void {
     this.state.turnDeadline = deadline ? Date.parse(deadline) : Date.now() + TURN_TIMEOUT_MS;
   }
@@ -227,27 +278,54 @@ export class MemoryGameOrchestrator {
     this.state.resultSaveError = 'Esperando confirmación del guardado del servidor.';
   }
 
+  /**
+   * Estado completo que manda el servidor al entrar o al reconectar. Reemplaza
+   * todo el estado local: el servidor es la única fuente de verdad.
+   */
   private onSnapshot(msg: StateSnapshotMessage): void {
-    if (msg.matchId !== this.state.matchId) return;
-    for (const timer of this.revealTimers) window.clearTimeout(timer);
-    this.revealTimers.clear();
-    this.state.phase = msg.phase; this.state.connectionReady = true;
+    if (msg.matchId !== this.state.matchId) {
+      return;
+    }
+
+    this.clearRevealTimers();
+
+    this.state.phase = msg.phase;
+    this.state.connectionReady = true;
     this.state.players = msg.players;
     this.state.cards = msg.cards.map(card => ({...card, matchedByUserId: null}));
     this.state.currentPlayerId = msg.currentPlayerId;
     this.state.matchStartedAt = new Date(msg.startedAt);
     this.state.turnDeadline = msg.turnDeadline ? Date.parse(msg.turnDeadline) : null;
-    this.state.isDraw = msg.isDraw; this.state.winnerUserId = msg.winnerUserId;
+    this.state.isDraw = msg.isDraw;
+    this.state.winnerUserId = msg.winnerUserId;
+
     if (msg.phase === 'finished') {
       this.state.resultSaveError = msg.resultSaved ? null : 'El servidor reintentará guardar el resultado.';
-      if (msg.resultSaved) void this.confirmResult();
+
+      if (msg.resultSaved) {
+        void this.confirmResult();
+      }
     }
   }
 
+  /**
+   * La pantalla solo deja de mostrar el aviso cuando el resultado se puede
+   * leer desde la API: no se da por guardado algo que no está confirmado.
+   */
   private async confirmResult(): Promise<void> {
     const id = this.state.matchId;
-    try { await this.http.getResult(id); if (this.state.matchId === id) this.state.resultSaveError = null; }
-    catch { if (this.state.matchId === id) this.state.resultSaveError = 'El resultado todavía no está confirmado en el servidor.'; }
+
+    try {
+      await this.http.getResult(id);
+
+      if (this.state.matchId === id) {
+        this.state.resultSaveError = null;
+      }
+    } catch {
+      if (this.state.matchId === id) {
+        this.state.resultSaveError = 'El resultado todavía no está confirmado en el servidor.';
+      }
+    }
   }
 
   private async saveResult(): Promise<void> {

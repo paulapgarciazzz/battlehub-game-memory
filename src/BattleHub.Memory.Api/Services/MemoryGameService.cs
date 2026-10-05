@@ -6,8 +6,13 @@ namespace BattleHub.Memory.Api.Services;
 public class MemoryGameService
 {
     private readonly object _lock = new();
+
+    // Partidas que están en la previsualización inicial (no se puede jugar).
     private readonly HashSet<string> _preview = new();
+
+    // Partidas terminadas cuyo resultado ya quedó guardado en la BD.
     private readonly HashSet<string> _saved = new();
+
     private readonly Dictionary<string, GameSession> _sessions = new();
     private readonly Dictionary<string, List<Player>> _waitingPlayers = new();
 
@@ -32,7 +37,10 @@ public class MemoryGameService
             // Si la partida ya existe, no necesitamos crearla otra vez.
             if (_sessions.TryGetValue(matchId, out var existingSession))
             {
-                if (!existingSession.Players.Any(p => p.UserId == player.UserId)) throw new InvalidOperationException("PLAYER_NOT_IN_MATCH");
+                // Solo pueden volver a entrar los dos jugadores de la partida.
+                if (!existingSession.Players.Any(p => p.UserId == player.UserId))
+                    throw new InvalidOperationException("PLAYER_NOT_IN_MATCH");
+
                 return existingSession;
             }
 
@@ -62,6 +70,7 @@ public class MemoryGameService
             // Ya no necesitamos mantenerlos como jugadores esperando.
             _waitingPlayers.Remove(matchId);
 
+            // La partida arranca en previsualización; el Hub la termina.
             _preview.Add(matchId);
             sessionCreated = true;
 
@@ -69,17 +78,48 @@ public class MemoryGameService
         }
     }
 
-    public bool IsPreview(string id) { lock (_lock) return _preview.Contains(id); }
-    public void EndPreview(string id) { lock (_lock) _preview.Remove(id); }
-    public bool ResultSaved(string id) { lock (_lock) return _saved.Contains(id); }
-    public void MarkSaved(string id) { lock (_lock) _saved.Add(id); }
-    public GameSession[] UnsavedResults() { lock (_lock) return _sessions.Values.Where(s => s.IsFinished && !_saved.Contains(s.MatchId)).ToArray(); }
+    public bool IsPreview(string id)
+    {
+        lock (_lock) return _preview.Contains(id);
+    }
+
+    public void EndPreview(string id)
+    {
+        lock (_lock) _preview.Remove(id);
+    }
+
+    public bool ResultSaved(string id)
+    {
+        lock (_lock) return _saved.Contains(id);
+    }
+
+    public void MarkSaved(string id)
+    {
+        lock (_lock) _saved.Add(id);
+    }
+
+    /// <summary>
+    /// Partidas terminadas cuyo resultado todavía no se guardó. Las usa
+    /// ResultRetryWorker para reintentar el guardado.
+    /// </summary>
+    public GameSession[] UnsavedResults()
+    {
+        lock (_lock)
+        {
+            return _sessions.Values
+                .Where(s => s.IsFinished && !_saved.Contains(s.MatchId))
+                .ToArray();
+        }
+    }
 
     public GameSession CreateSession(
         string matchId,
         IReadOnlyList<Player> players)
     {
-        if (players.Count != 2 || players.Select(p => p.UserId).Distinct().Count() != 2) throw new InvalidOperationException("Memory requiere dos participantes distintos.");
+        // Memory es de exactamente 2 jugadores distintos.
+        if (players.Count != 2 || players.Select(p => p.UserId).Distinct().Count() != 2)
+            throw new InvalidOperationException("Memory requiere dos participantes distintos.");
+
         var cardValues = new[]
         {
             "A", "B", "C", "D",

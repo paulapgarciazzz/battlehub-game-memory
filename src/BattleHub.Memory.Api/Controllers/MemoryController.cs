@@ -23,7 +23,10 @@ public class MemoryController : ControllerBase
         string userId,
         CancellationToken ct)
     {
-        if (userId != MemoryAuth.UserId(User)) return Forbid();
+        // Cada jugador solo puede ver su propio historial.
+        if (userId != MemoryAuth.UserId(User))
+            return Forbid();
+
         var history = await _historyService.GetHistoryByPlayerAsync(userId, ct);
 
         var result = history.Select(p => new MemoryGameHistoryDto
@@ -45,7 +48,10 @@ public class MemoryController : ControllerBase
         string userId,
         CancellationToken ct)
     {
-        if (userId != MemoryAuth.UserId(User)) return Forbid();
+        // Cada jugador solo puede ver sus propias estadísticas.
+        if (userId != MemoryAuth.UserId(User))
+            return Forbid();
+
         var stats = await _historyService.GetStatsByPlayerAsync(userId, ct);
 
         return Ok(new MemoryPlayerStatsDto

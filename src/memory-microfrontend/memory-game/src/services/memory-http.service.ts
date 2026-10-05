@@ -11,22 +11,43 @@ export interface SaveResultResponse {
 @singleton()
 export class MemoryHttpService {
   private readonly baseUrl = environment.apiBaseUrl;
+  // Token del jugador para la API de Memory (lo entrega el Shell).
   private token: (() => Promise<string>) | null = null;
-  public configure(token: (() => Promise<string>) | null): void { this.token = token; }
+
+  public configure(token: (() => Promise<string>) | null): void {
+    this.token = token;
+  }
+
+  // Todas las llamadas a la API van autenticadas con el token del jugador.
   private async headers(): Promise<Record<string, string>> {
-    if (!this.baseUrl) throw new Error('Configurar la URL de la API de Memory.');
-    if (!this.token) throw new Error('Abrir Memory desde el Shell.');
+    if (!this.baseUrl) {
+      throw new Error('Configurar la URL de la API de Memory.');
+    }
+
+    if (!this.token) {
+      throw new Error('Abrir Memory desde el Shell.');
+    }
+
     return {Authorization: `Bearer ${await this.token()}`, 'Content-Type': 'application/json'};
   }
+
+  // Se usa para confirmar que el resultado quedó guardado en el servidor.
   public async getResult(matchId: string): Promise<unknown> {
-    const response = await fetch(`${this.baseUrl}/api/games/memory/results/${encodeURIComponent(matchId)}`, {headers: await this.headers()});
-    if (!response.ok) throw new Error('El resultado todavía no está confirmado en el servidor.');
+    const response = await fetch(
+      `${this.baseUrl}/api/games/memory/results/${encodeURIComponent(matchId)}`,
+      {headers: await this.headers()});
+
+    if (!response.ok) {
+      throw new Error('El resultado todavía no está confirmado en el servidor.');
+    }
+
     return response.json();
   }
 
   public async getHistory(userId: string): Promise<MemoryGameHistoryDto[]> {
     const response = await fetch(
-      `${this.baseUrl}/api/games/memory/players/${encodeURIComponent(userId)}/history`, {headers: await this.headers()});
+      `${this.baseUrl}/api/games/memory/players/${encodeURIComponent(userId)}/history`,
+      {headers: await this.headers()});
 
     if (!response.ok) {
       throw new Error('No se pudo obtener el historial de partidas.');

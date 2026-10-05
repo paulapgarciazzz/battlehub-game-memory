@@ -64,7 +64,10 @@ public class MemoryGameResultsController : ControllerBase
                 });
             }
 
-            if (!savedResult.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
+            // Solo los participantes de la partida pueden ver su resultado.
+            if (!savedResult.Players.Any(p => p.UserId == MemoryAuth.UserId(User)))
+                return Forbid();
+
             return Ok(new
             {
                 ResultId = savedResult.Id,
@@ -73,7 +76,10 @@ public class MemoryGameResultsController : ControllerBase
             });
         }
 
-        if (!session.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
+        // Solo un jugador de la partida puede pedir que se guarde.
+        if (!session.Players.Any(p => p.UserId == MemoryAuth.UserId(User)))
+            return Forbid();
+
         if (!session.IsFinished)
         {
             return BadRequest(new
@@ -86,8 +92,10 @@ public class MemoryGameResultsController : ControllerBase
             session,
             ct);
 
+        // Avisa a las dos pantallas que el resultado quedó guardado.
         _gameService.MarkSaved(session.MatchId);
         await _hub.Clients.Group(session.MatchId).SendAsync("ResultSaved", new { session.MatchId }, ct);
+
         return Ok(new
         {
             ResultId = resultId,
@@ -111,7 +119,10 @@ public class MemoryGameResultsController : ControllerBase
             });
         }
 
-        if (!result.Players.Any(p => p.UserId == MemoryAuth.UserId(User))) return Forbid();
+        // Solo los participantes de la partida pueden ver su resultado.
+        if (!result.Players.Any(p => p.UserId == MemoryAuth.UserId(User)))
+            return Forbid();
+
         return Ok(new MemoryGameResultDto
         {
             ResultId = result.Id,
