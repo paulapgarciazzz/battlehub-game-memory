@@ -1,4 +1,4 @@
-﻿using BattleHub.Memory.Data.Entities;
+using BattleHub.Memory.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BattleHub.Memory.Data.DbContext;
@@ -20,9 +20,13 @@ public class MemoryDbContext : Microsoft.EntityFrameworkCore.DbContext
 
     public DbSet<MemoryGameResultPlayer> GameResultPlayers => Set<MemoryGameResultPlayer>();
 
+    public DbSet<FinishNotification> FinishNotifications => Set<FinishNotification>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<FinishNotification>().HasKey(p => p.MatchId);
+        modelBuilder.Entity<FinishNotification>().Property(p => p.MatchId).HasMaxLength(64);
 
         modelBuilder.Entity<MemoryMatch>()
             .HasAlternateKey(m => m.MatchId);

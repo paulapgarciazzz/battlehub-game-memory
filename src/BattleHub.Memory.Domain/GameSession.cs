@@ -228,6 +228,46 @@ public class GameSession
         _turnNumber++;
     }
 
+    /// <summary>
+    /// Estado completo de la partida para quien entra o vuelve a entrar
+    /// (evento StateSnapshot del Hub). Se arma dentro del lock para que sea
+    /// una foto consistente.
+    ///
+    /// El valor de una carta solo se manda si está boca arriba o emparejada
+    /// (o durante la previsualización): las cartas ocultas no revelan nada.
+    /// </summary>
+    public object Snapshot(bool preview, DateTimeOffset? deadline, bool resultSaved)
+    {
+        lock (_lock)
+        {
+            var winners = GetWinners();
+
+            return new
+            {
+                MatchId,
+                Phase = IsFinished ? "finished" : preview ? "preview" : "playing",
+                StartedAt,
+                CurrentPlayerId = CurrentPlayer.UserId,
+                TurnDeadline = deadline,
+                IsDraw = IsFinished && winners.Count > 1,
+                WinnerUserId = IsFinished && winners.Count == 1 ? winners[0].UserId : null,
+                ResultSaved = resultSaved,
+                Players = Players
+                    .Select(p => new { p.UserId, p.DisplayName, p.MatchedPairs })
+                    .ToArray(),
+                Cards = Board.Cards
+                    .Select(c => new
+                    {
+                        c.Id,
+                        Value = preview || c.State != CardState.FaceDown ? c.Value : null,
+                        FaceUp = preview || c.State != CardState.FaceDown,
+                        Matched = c.State == CardState.Matched
+                    })
+                    .ToArray()
+            };
+        }
+    }
+
     public IReadOnlyList<Player> GetWinners()
     {
         var maxPairs =

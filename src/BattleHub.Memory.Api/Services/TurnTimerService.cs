@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using BattleHub.Memory.Api.Hubs;
 using BattleHub.Memory.Domain;
 using Microsoft.AspNetCore.SignalR;
@@ -15,6 +15,14 @@ namespace BattleHub.Memory.Api.Services;
 public class TurnTimerService
 {
     private readonly IHubContext<MemoryHub> _hubContext;
+    // Hora UTC en que vence el turno actual de cada partida. Se manda a los
+    // clientes (TurnDeadline) para que el contador de 10 s coincida en las dos
+    // pantallas y se recupere al reconectar.
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _deadlines = new();
+
+    /// <summary>Vencimiento del turno actual, o null si no hay temporizador.</summary>
+    public DateTimeOffset? Deadline(string id) =>
+        _deadlines.TryGetValue(id, out var value) ? value : null;
     private readonly ILogger<TurnTimerService> _logger;
 
     // Guarda un temporizador por cada partida.
@@ -45,6 +53,7 @@ public class TurnTimerService
         // Se guarda el número de turno al armar el timer: si cuando se
         // cumplen los 10 segundos el turno ya cambió, no se quita nada.
         var expectedTurnNumber = session.TurnNumber;
+        _deadlines[session.MatchId] = DateTimeOffset.UtcNow.AddSeconds(GameSession.TurnTimeoutSeconds);
 
         var cancellationTokenSource =
             new CancellationTokenSource();
@@ -77,6 +86,7 @@ public class TurnTimerService
     /// </summary>
     public void Stop(string matchId)
     {
+        _deadlines.TryRemove(matchId, out _);
         if (_turnTimers.TryRemove(
             matchId,
             out var timer))
@@ -125,19 +135,23 @@ public class TurnTimerService
                 return;
             }
 
+            // Se arma el temporizador del siguiente turno antes de avisar, así
+            // el evento ya lleva el vencimiento nuevo (TurnDeadline).
+            Start(session);
+
             await _hubContext.Clients.Group(matchId).SendAsync(
                 "TurnTimeout",
                 new
                 {
                     MatchId = matchId,
+                    TurnDeadline = Deadline(matchId),
                     timeout.PreviousPlayerId,
                     timeout.CurrentPlayerId,
                     TurnTimeoutSeconds =
                         GameSession.TurnTimeoutSeconds
                 });
 
-            // Iniciamos los 10 segundos para el siguiente jugador.
-            Start(session);
+            // El siguiente temporizador ya quedó iniciado antes del evento.
         }
         catch (OperationCanceledException)
         {

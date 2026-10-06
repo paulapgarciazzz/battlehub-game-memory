@@ -1,8 +1,10 @@
-// Tipos del contrato 03-contratos-tecnicos.md (secciones 5 y 6). Copia idéntica en el Shell y en los juegos.
+// Tipos del contrato 03-contratos-tecnicos.md (secciones 5 y 6). Las funciones de tokens son extensiones locales acordadas para integración.
 export interface GameContext {
   matchId: string;
   gameType: 'typing' | 'trivia' | 'memory';
   currentUser: { id: string; displayName: string };
+  getAccessToken?: () => Promise<string>;
+  getMatchmakingAccessToken?: () => Promise<string>;
 }
 
 export interface GameModule {

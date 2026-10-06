@@ -30,9 +30,22 @@ export class GameModule implements IGameModule {
   private joined = false;
 
   public async initialize(context: GameContext): Promise<void> {
-    if (!context?.matchId || !context.currentUser?.id || !context.currentUser.displayName) {
+    if (context?.gameType !== 'memory'
+      || !context?.matchId
+      || !context.currentUser?.id
+      || !context.currentUser.displayName) {
       throw new Error('El contexto del juego necesita matchId y currentUser (id y displayName).');
     }
+
+    // El Shell entrega dos tokens del jugador: uno para la API de Memory y
+    // otro para Matchmaking. Sin ellos no se puede jugar, así que se rechaza
+    // initialize() y el Shell lo muestra como LIFECYCLE_ERROR (ADR-003 §6).
+    if (typeof context.getAccessToken !== 'function'
+      || typeof context.getMatchmakingAccessToken !== 'function') {
+      throw new Error('Memory requiere los dos proveedores de tokens del Shell.');
+    }
+
+    this.orchestrator.configure(context.getAccessToken, context.getMatchmakingAccessToken);
 
     // Los servicios son singleton: se limpia lo que pudo quedar de una partida anterior.
     this.state.reset();
