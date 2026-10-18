@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- Aplica a todos los proyectos de src y tests: cualquier warning detiene la compilación. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
