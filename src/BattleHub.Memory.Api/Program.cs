@@ -3,6 +3,7 @@ using BattleHub.Memory.Api.Auth;
 using BattleHub.Memory.Api.Hubs;
 using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Api.Matchmaking;
+using BattleHub.Memory.Data.Seed;
 using BattleHub.Memory.Data.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
 // Servicios de la aplicación
 builder.Services.AddScoped<IGameResultService, GameResultService>();
 builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
+builder.Services.AddScoped<SampleDataSeeder>();
 
 // Las partidas en curso viven en memoria: estos servicios son singleton y
 // la API debe correr en una sola instancia.
@@ -68,6 +70,17 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<MemoryDbContext>().Database.MigrateAsync();
+}
+
+// SampleData:Enabled=true carga partidas de ejemplo para mostrar el historial.
+// Los jugadores salen de SampleData:Players; si no hay al menos dos, se usan
+// los de ejemplo (Ana, Bruno, Carla y Diego).
+if (builder.Configuration.GetValue<bool>("SampleData:Enabled"))
+{
+    var players = builder.Configuration.GetSection("SampleData:Players").Get<SamplePlayer[]>();
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<SampleDataSeeder>()
+        .SeedAsync(players is { Length: >= 2 } ? players : SampleDataSeeder.DefaultPlayers);
 }
 
 if (app.Environment.IsDevelopment())
