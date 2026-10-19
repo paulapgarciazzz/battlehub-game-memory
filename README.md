@@ -47,7 +47,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-Integrat
 ```
 
 O desde Visual Studio / `dotnet run --project src/BattleHub.Memory.Api`.
-Queda en `http://localhost:5095`.
+Queda en `http://localhost:5095`. Desde Visual Studio aplica las migraciones y
+carga los datos de ejemplo al arrancar (ver [Datos de ejemplo](#datos-de-ejemplo)).
 
 ### 3. Microfrontend
 
@@ -101,10 +102,37 @@ Frontend: `npm test` en `src/memory-microfrontend/memory-game` (lint y Jest).
 | `Cors:Origins` | Orígenes permitidos: Shell (4000) y microfrontend (4003) |
 | `Matchmaking:BaseUrl` | URL de Matchmaking (`http://localhost:5211`) |
 | `Matchmaking:Auth0:*` | Cliente M2M para avisar el fin de partida; `ClientSecret` va vacío |
-| `Database:MigrateOnStartup` | Aplicar migraciones al arrancar (lo activa `Start-Integration.ps1`) |
+| `Database:MigrateOnStartup` | Aplicar migraciones al arrancar (lo activan `Start-Integration.ps1` y Visual Studio) |
+| `SampleData:Enabled` | Cargar partidas de ejemplo al arrancar (lo activa Visual Studio) |
+| `SampleData:Players` | Jugadores de las partidas de ejemplo (opcional) |
 
 En producción, cualquier valor se reemplaza con variables de entorno, por ejemplo
 `ConnectionStrings__MemoryDatabase` o `Matchmaking__Auth0__ClientSecret`.
+
+## Datos de ejemplo
+
+Con `SampleData:Enabled=true`, la API carga al arrancar 18 partidas terminadas
+de los últimos 30 días, para que el historial y las estadísticas tengan datos
+sin necesidad de jugar. Los jugadores por defecto son Ana, Bruno, Carla y Diego
+(`demo|ana`, `demo|bruno`, `demo|carla`, `demo|diego`): cada uno tiene 9 partidas,
+con victorias, derrotas y 3 empates.
+
+- La carga está en `src/BattleHub.Memory.Data/Seed/SampleDataSeeder.cs`, fuera del `DbContext`.
+- Se hace una sola vez: si ya existen partidas `ejemplo-001` a `ejemplo-018`, no vuelve a insertar.
+- Estas partidas no se avisan a Matchmaking, porque no existen allá.
+
+Para ver el historial con una cuenta real, pongan su `sub` de Auth0 como uno de
+los jugadores, por ejemplo con variables de entorno:
+
+```powershell
+$env:SampleData__Players__0__UserId = "auth0|su-id"
+$env:SampleData__Players__0__DisplayName = "Su nombre"
+$env:SampleData__Players__1__UserId = "demo|bruno"
+$env:SampleData__Players__1__DisplayName = "Bruno"
+```
+
+Si ya se cargaron partidas de ejemplo con otros jugadores, primero hay que
+borrarlas en la base (`DELETE FROM GameResults WHERE MatchId LIKE 'ejemplo-%'`).
 
 ## Contratos implementados
 
