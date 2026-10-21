@@ -14,8 +14,7 @@
 
   <p if.bind="!state.connectionReady">Reconectando con la partida. Espera la actualización del servidor.</p>
 
-  <turn-indicator if.bind="state.phase === 'playing'"></turn-indicator>
-
+<turn-indicator if.bind="state.phase === 'playing' && !state.soloMode"></turn-indicator>
   <div class="memory-game-board__layout">
     <player-tray player.bind="myPlayer" is-current-turn.bind="isMyTrayActive"></player-tray>
 
@@ -23,6 +22,10 @@
       <memory-card repeat.for="card of state.cards" card.bind="card" disabled.bind="isCardDisabled"></memory-card>
     </div>
 
-    <player-tray player.bind="opponentPlayer" is-current-turn.bind="isOpponentTrayActive" mirrored.bind="true"></player-tray>
-  </div>
+<player-tray
+  if.bind="!state.soloMode"
+  player.bind="opponentPlayer"
+  is-current-turn.bind="isOpponentTrayActive"
+  mirrored.bind="true">
+</player-tray>  </div>
 </div>

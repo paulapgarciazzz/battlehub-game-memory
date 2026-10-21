@@ -32,6 +32,9 @@ export class MemoryGameState {
   public winnerUserId: string | null = null;
   public isDraw = false;
   public resultSaveError: string | null = null;
+  public practiceMode = false;
+  public practiceResolving = false;
+  public soloMode = false;
 
   // true cuando el juego corre dentro del Shell (GameModule). En ese caso no
   // hay pantalla de unión ni "Jugar de nuevo": el Shell controla la partida.
@@ -75,6 +78,9 @@ export class MemoryGameState {
     this.resultSaveError = null;
     this.paused = false;
     this.connectionReady = true;
+  this.practiceMode = false;
+this.practiceResolving = false;
+this.soloMode = false;
   }
 
   private static emptyBoard(): CardViewModel[] {

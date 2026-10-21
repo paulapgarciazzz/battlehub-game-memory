@@ -1,8 +1,8 @@
-import {IEventAggregator, resolve, singleton} from 'aurelia';
+
+import { IEventAggregator, resolve, singleton } from 'aurelia';
 import * as signalR from '@microsoft/signalr';
 import environment from '../../config/environment.json';
 
-// Canales del EventAggregator: cada evento del hub se republica con este nombre.
 export const MemoryHubEvents = {
   PlayerJoined: 'memory:player-joined',
   GameReady: 'memory:game-ready',
@@ -10,14 +10,11 @@ export const MemoryHubEvents = {
   CardFlipped: 'memory:card-flipped',
   TurnTimeout: 'memory:turn-timeout',
   ConnectionClosed: 'memory:connection-closed',
-  // Estado completo de la partida al entrar o al reconectar.
   StateSnapshot: 'memory:state-snapshot',
-  // El backend confirma (o no) que guardó el resultado.
   ResultSaved: 'memory:result-saved',
   ResultSaveFailed: 'memory:result-save-failed'
 } as const;
 
-// Eventos que el hub de Memory envía y que se reenvían al EventAggregator.
 const HUB_EVENTS = [
   'PlayerJoined',
   'GameReady',
@@ -29,66 +26,92 @@ const HUB_EVENTS = [
   'ResultSaveFailed'
 ] as const;
 
-/**
- * Conexión SignalR con /hubs/memory.
- *
- * Los tokens los entrega el Shell por GameContext (ver GameModule):
- * - token: token del jugador para la API de Memory (audiencia de Memory).
- * - roomToken: token del jugador para Matchmaking; el backend lo usa solo
- *   para validar la sala.
- */
 @singleton()
 export class MemoryHubService {
   private readonly ea = resolve(IEventAggregator);
+
   private connection: signalR.HubConnection | null = null;
+
   private token: (() => Promise<string>) | null = null;
   private roomToken: (() => Promise<string>) | null = null;
 
-  // Partida actual: se usa para volver a unirse después de una reconexión.
   private matchId: string | null = null;
 
-  public configure(token: () => Promise<string>, roomToken: () => Promise<string>): void {
+  // Modo local independiente del Shell.
+  private localMode = false;
+  private localUserId: string | null = null;
+  private localDisplayName: string | null = null;
+
+  // Se utiliza en el modo competitivo de BattleHub.
+  public configure(
+    token: () => Promise<string>,
+    roomToken: () => Promise<string>
+  ): void {
+    this.localMode = false;
+    this.localUserId = null;
+    this.localDisplayName = null;
+
     this.token = token;
     this.roomToken = roomToken;
   }
 
+  // Se utiliza cuando se entra directamente a localhost:4003.
+  public configureLocal(): void {
+    this.localMode = true;
+    this.token = null;
+    this.roomToken = null;
+  }
+
   public async connect(): Promise<void> {
-    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+    if (
+      this.connection?.state ===
+      signalR.HubConnectionState.Connected
+    ) {
       return;
     }
 
-    if (!environment.hubBaseUrl) {
+    if (!this.localMode && !environment.hubBaseUrl) {
       throw new Error('Configurar la URL del hub de Memory.');
     }
 
-    // Sin tokens no se puede jugar: el modo independiente ya no autentica
-    // escribiendo un userId, hay que entrar desde una sala del Shell.
-    if (!this.token || !this.roomToken) {
-      throw new Error('Abrir Memory desde una sala del Shell.');
+    if (!this.localMode && (!this.token || !this.roomToken)) {
+      throw new Error(
+        'Faltan los proveedores de tokens del Shell de BattleHub.'
+      );
     }
 
     if (this.connection) {
       await this.disconnect();
     }
 
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${environment.hubBaseUrl}/hubs/memory`, {
-        // SignalR pide el token en cada conexión y reconexión.
-        accessTokenFactory: () => {
-          if (!this.token) {
-            return Promise.reject(new Error('La partida se cerró.'));
-          }
+    // En local se usa el mismo equipo que sirve el frontend.
+    // Así también funciona al abrir la web mediante la IP LAN
+    // de la computadora que ejecuta el backend.
+    const hubUrl = this.localMode
+      ? `http://${window.location.hostname}:5095/hubs/memory-local`
+      : `${environment.hubBaseUrl}/hubs/memory`;
 
-          return this.token();
-        }
-      })
+    const options: signalR.IHttpConnectionOptions = this.localMode
+      ? {}
+      : {
+          accessTokenFactory: () => {
+            if (!this.token) {
+              return Promise.reject(
+                new Error('La partida se cerró.')
+              );
+            }
+
+            return this.token();
+          }
+        };
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, options)
       .withAutomaticReconnect()
       .build();
 
     this.connection = connection;
 
-    // Solo se publican los eventos de la conexión vigente; si hubo una
-    // conexión anterior, sus eventos tardíos se ignoran.
     for (const event of HUB_EVENTS) {
       connection.on(event, msg => {
         if (this.connection === connection) {
@@ -97,13 +120,27 @@ export class MemoryHubService {
       });
     }
 
-    connection.onreconnecting(() => this.ea.publish(MemoryHubEvents.ConnectionClosed, null));
+    connection.onreconnecting(() => {
+      this.ea.publish(MemoryHubEvents.ConnectionClosed, null);
+    });
 
-    // Al reconectar se vuelve a hacer JoinMatch: el backend responde con un
-    // StateSnapshot y la pantalla recupera la partida.
     connection.onreconnected(async () => {
       try {
-        if (this.connection === connection && this.matchId) {
+        if (this.connection !== connection || !this.matchId) {
+          return;
+        }
+
+        if (this.localMode) {
+          if (!this.localUserId || !this.localDisplayName) {
+            throw new Error('Faltan los datos del jugador local.');
+          }
+
+          await this.joinLocalMatch(
+            this.matchId,
+            this.localUserId,
+            this.localDisplayName
+          );
+        } else {
           await this.joinMatch(this.matchId);
         }
       } catch {
@@ -130,17 +167,53 @@ export class MemoryHubService {
     }
   }
 
+  // Conexión competitiva: conserva los tokens de Matchmaking.
   public async joinMatch(matchId: string): Promise<void> {
-    if (!this.connection || !this.roomToken) {
-      throw new Error('Memory no está conectado.');
+    if (
+      !this.connection ||
+      !this.roomToken ||
+      this.localMode
+    ) {
+      throw new Error(
+        'Memory no está conectado al modo competitivo.'
+      );
     }
 
     this.matchId = matchId;
-    await this.connection.invoke('JoinMatch', matchId, await this.roomToken());
+
+    await this.connection.invoke(
+      'JoinMatch',
+      matchId,
+      await this.roomToken()
+    );
   }
 
-  // El backend toma el jugador del token: ya no se envía userId.
-  public async flipCard(matchId: string, cardId: number): Promise<void> {
+  // Conexión local: no necesita tokens del Shell.
+  public async joinLocalMatch(
+    matchId: string,
+    userId: string,
+    displayName: string
+  ): Promise<void> {
+    if (!this.connection || !this.localMode) {
+      throw new Error('Memory no está conectado al modo local.');
+    }
+
+    this.matchId = matchId;
+    this.localUserId = userId;
+    this.localDisplayName = displayName;
+
+    await this.connection.invoke(
+      'JoinMatch',
+      matchId,
+      userId,
+      displayName
+    );
+  }
+
+  public async flipCard(
+    matchId: string,
+    cardId: number
+  ): Promise<void> {
     if (!this.connection) {
       throw new Error('Memory no está conectado.');
     }
@@ -150,14 +223,19 @@ export class MemoryHubService {
 
   public async disconnect(): Promise<void> {
     const connection = this.connection;
+
     this.connection = null;
     this.matchId = null;
+
     await connection?.stop();
   }
 
-  // Lo usa GameModule.dispose() para no conservar los proveedores de tokens.
   public clearCredentials(): void {
     this.token = null;
     this.roomToken = null;
+
+    this.localMode = false;
+    this.localUserId = null;
+    this.localDisplayName = null;
   }
 }

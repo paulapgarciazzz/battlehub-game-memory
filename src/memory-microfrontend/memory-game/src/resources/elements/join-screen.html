@@ -27,7 +27,14 @@
     <button type="submit" class="memory-game-join-screen__submit" if.bind="state.phase === 'join'" disabled.bind="joining">
       ${joining ? 'Conectando...' : 'Unirme a la partida'}
     </button>
-
+<button
+  type="button"
+  class="memory-game-join-screen__submit"
+  if.bind="state.phase === 'join'"
+  disabled.bind="joining"
+  click.trigger="startSolo()">
+  Jugar solo
+</button>
     <p class="memory-game-join-screen__waiting" if.bind="state.phase === 'waiting-for-opponent'">
       Esperando al segundo jugador para la partida <strong>${state.matchId}</strong>...
     </p>
