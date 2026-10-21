@@ -6,9 +6,22 @@ export class GameBoard {
   private readonly orchestrator = resolve(MemoryGameOrchestrator);
   public readonly state = resolve(MemoryGameState);
 
-  public get isCardDisabled(): boolean {
-    return this.state.phase !== 'playing' || !this.state.isMyTurn || this.state.paused || !this.state.connectionReady;
+public get isCardDisabled(): boolean {
+  if (this.state.soloMode || this.state.practiceMode) {
+    return (
+      this.state.phase !== 'playing' ||
+      this.state.paused ||
+      this.state.practiceResolving
+    );
   }
+
+  return (
+    this.state.phase !== 'playing' ||
+    !this.state.isMyTurn ||
+    this.state.paused ||
+    !this.state.connectionReady
+  );
+}
 
   public get myPlayer(): PlayerViewModel | null {
     return this.state.players.find(p => p.userId === this.state.myUserId) ?? null;

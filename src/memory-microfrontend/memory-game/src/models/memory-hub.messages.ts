@@ -22,10 +22,12 @@ export interface PreviewFinishedMessage {
 }
 
 export interface CardFlippedMessage {
+  matchId: string;
   userId: string;
   cards: CardSnapshot[];
   isMatch: boolean;
   currentPlayerId: string;
+  isFinished: boolean;
   turnDeadline?: string | null;
 }
 

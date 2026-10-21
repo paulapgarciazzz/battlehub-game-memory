@@ -1,8 +1,22 @@
+
 <import from="./resources/elements/join-screen"></import>
 <import from="./resources/elements/game-view"></import>
 <import from="./memory-app.css"></import>
+<import from="./memory-standalone.css"></import>
 
 <div class="memory-game" style.bind="backgroundStyle">
-  <join-screen if.bind="state.phase === 'join' || state.phase === 'waiting-for-opponent'"></join-screen>
-  <game-view else></game-view>
+
+  <!-- Formulario para crear o unirse a una partida local -->
+  <div
+    if.bind="state.phase === 'join' || state.phase === 'waiting-for-opponent'">
+
+    <join-screen></join-screen>
+
+  </div>
+
+  <!-- Tablero y resultados de la partida -->
+  <game-view
+    if.bind="state.phase !== 'join' && state.phase !== 'waiting-for-opponent'">
+  </game-view>
+
 </div>
