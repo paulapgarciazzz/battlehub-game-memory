@@ -10,59 +10,11 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-namespace BattleHub.Memory.IntegrationTests;
+namespace BattleHub.Memory.Api.Tests.Hubs;
 [Collection(MemoryDatabaseCollection.Name)]
-public sealed class MemoryIntegrationTests(MemoryApiFactory factory)
+[Trait("Category", "Integration")]
+public sealed class MemoryHubTests(MemoryApiFactory factory)
 {
-    [Fact]
-    public async Task SchemaKeepsOnlyUsedTablesWithGuidPrimaryKeys()
-    {
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
-        await db.Database.OpenConnectionAsync();
-        try
-        {
-            await using var command = db.Database.GetDbConnection().CreateCommand();
-            command.CommandText = """
-                SELECT t.name, c.name, TYPE_NAME(c.user_type_id)
-                FROM sys.key_constraints pk
-                JOIN sys.tables t ON t.object_id = pk.parent_object_id
-                JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = pk.unique_index_id
-                JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
-                WHERE pk.type = 'PK' AND t.name <> '__EFMigrationsHistory';
-                """;
-            var primaryKeys = new Dictionary<string, (string Column, string Type)>();
-            await using (var reader = await command.ExecuteReaderAsync())
-            {
-                while (await reader.ReadAsync())
-                    primaryKeys.Add(reader.GetString(0), (reader.GetString(1), reader.GetString(2)));
-            }
-
-            Assert.DoesNotContain("Matches", primaryKeys.Keys);
-            Assert.DoesNotContain("Players", primaryKeys.Keys);
-            Assert.DoesNotContain("Cards", primaryKeys.Keys);
-            Assert.Contains("GameResults", primaryKeys.Keys);
-            Assert.Contains("GameResultPlayers", primaryKeys.Keys);
-            Assert.Contains("FinishNotifications", primaryKeys.Keys);
-            Assert.All(primaryKeys.Values, key => Assert.Equal("uniqueidentifier", key.Type));
-            Assert.Equal("Id", primaryKeys["FinishNotifications"].Column);
-
-            command.CommandText = """
-                SELECT COUNT(*)
-                FROM sys.indexes i
-                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-                JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
-                WHERE i.object_id = OBJECT_ID(N'[FinishNotifications]')
-                  AND i.is_unique = 1 AND c.name = N'MatchId';
-                """;
-            Assert.True(Convert.ToInt32(await command.ExecuteScalarAsync()) > 0);
-        }
-        finally
-        {
-            await db.Database.CloseConnectionAsync();
-        }
-    }
-
     [Theory]
     [InlineData("anonymous", 401)]
     [InlineData("audience", 401)]
@@ -92,16 +44,6 @@ public sealed class MemoryIntegrationTests(MemoryApiFactory factory)
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal("http://localhost:4000", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
         Assert.Equal("true", response.Headers.GetValues("Access-Control-Allow-Credentials").Single());
-    }
-    [Fact]
-    public async Task HistoryIsPrivateAndRestDoesNotAcceptQueryToken()
-    {
-        using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new("Bearer", factory.Token("auth0|one"));
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/games/memory/players/auth0%7Ctwo/history")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/games/memory/players/auth0%7Cone/history")).StatusCode);
-        client.DefaultRequestHeaders.Authorization = null;
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/games/memory/players/auth0%7Cone/history?access_token=" + factory.Token("auth0|one"))).StatusCode);
     }
     [Fact]
     public async Task TwoJwtClientsPlayReconnectPersistAndNotify()

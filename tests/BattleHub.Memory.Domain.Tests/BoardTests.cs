@@ -1,6 +1,6 @@
 ﻿using BattleHub.Memory.Domain;
 
-namespace BattleHub.Memory.UnitTests;
+namespace BattleHub.Memory.Domain.Tests;
 
 public class BoardTests
 {
