@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace BattleHub.Memory.IntegrationTests;
+namespace BattleHub.Memory.Api.Tests.Matchmaking;
 
 public sealed class MatchmakingGatewayTests
 {

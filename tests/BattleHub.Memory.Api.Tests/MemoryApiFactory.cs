@@ -18,7 +18,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.MsSql;
 
-namespace BattleHub.Memory.IntegrationTests;
+namespace BattleHub.Memory.Api.Tests;
 
 public sealed class MemoryApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {

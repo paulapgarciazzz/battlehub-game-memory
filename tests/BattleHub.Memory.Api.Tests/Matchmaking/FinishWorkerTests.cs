@@ -6,21 +6,22 @@ using BattleHub.Memory.Data.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
-namespace BattleHub.Memory.IntegrationTests;
+namespace BattleHub.Memory.Api.Tests.Matchmaking;
 
 [Collection(MemoryDatabaseCollection.Name)]
+[Trait("Category", "Integration")]
 public sealed class FinishWorkerTests(MemoryApiFactory factory)
 {
-    private sealed class Gateway(string target, FinishOutcome outcome) : IMatchmakingGateway
+    // Matchmaking simulado: responde "outcome" para la partida de la prueba
+    // y confirma cualquier otro aviso que quede en la cola compartida.
+    private static Mock<IMatchmakingGateway> Gateway(string target, FinishOutcome outcome)
     {
-        public int Calls;
-        public Task<MatchRoom> ValidateAsync(string id, string user, string token, CancellationToken ct, bool allowFinished = false) => throw new NotSupportedException();
-        public Task<FinishOutcome> FinishAsync(string id, CancellationToken ct)
-        {
-            if (id == target) { Calls++; return Task.FromResult(outcome); }
-            return Task.FromResult(FinishOutcome.Confirmed);
-        }
+        var gateway = new Mock<IMatchmakingGateway>();
+        gateway.Setup(g => g.FinishAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(FinishOutcome.Confirmed);
+        gateway.Setup(g => g.FinishAsync(target, It.IsAny<CancellationToken>())).ReturnsAsync(outcome);
+        return gateway;
     }
 
     [Theory]
@@ -38,19 +39,19 @@ public sealed class FinishWorkerTests(MemoryApiFactory factory)
         }
         await scope.ServiceProvider.GetRequiredService<IGameResultService>().SaveResultAsync(session, session.StartedAt);
         factory.Clock.Advance(2);
-        var gateway = new Gateway(id, outcome);
-        var worker = CreateWorker(gateway);
-        for (var i = 0; i < 6 && gateway.Calls == 0; i++) await worker.DispatchAsync(default);
-        Assert.Equal(1, gateway.Calls);
+        var gateway = Gateway(id, outcome);
+        var worker = CreateWorker(gateway.Object);
+        for (var i = 0; i < 6; i++) await worker.DispatchAsync(default);
+        gateway.Verify(g => g.FinishAsync(id, It.IsAny<CancellationToken>()), Times.Once());
         var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
         var pending = await db.FinishNotifications.AsNoTracking().SingleAsync(item => item.MatchId == id);
         Assert.Equal(blocked, pending.Blocked);
         Assert.False(pending.Delivered);
         factory.Clock.Advance(31);
-        var restoredGateway = new Gateway(id, FinishOutcome.Confirmed);
-        var restored = CreateWorker(restoredGateway);
+        var restoredGateway = Gateway(id, FinishOutcome.Confirmed);
+        var restored = CreateWorker(restoredGateway.Object);
         for (var i = 0; i < 6; i++) await restored.DispatchAsync(default);
-        Assert.Equal(blocked ? 0 : 1, restoredGateway.Calls);
+        restoredGateway.Verify(g => g.FinishAsync(id, It.IsAny<CancellationToken>()), blocked ? Times.Never() : Times.Once());
         Assert.Equal(!blocked, (await db.FinishNotifications.AsNoTracking().SingleAsync(item => item.MatchId == id)).Delivered);
     }
 

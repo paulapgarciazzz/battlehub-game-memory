@@ -1,22 +1,20 @@
-using BattleHub.Memory.Data.DbContext;
 using BattleHub.Memory.Data.Entities;
 using BattleHub.Memory.Data.Seed;
 using BattleHub.Memory.Data.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace BattleHub.Memory.IntegrationTests;
+namespace BattleHub.Memory.Data.Tests.Seed;
 
 [Collection(MemoryDatabaseCollection.Name)]
-public sealed class SampleDataSeederTests(MemoryApiFactory factory)
+[Trait("Category", "Integration")]
+public sealed class SampleDataSeederTests(MemoryDatabaseFixture database)
 {
     [Fact]
     public async Task LoadsHistoryOnceWithoutNotifyingMatchmaking()
     {
-        using var scope = factory.Services.CreateScope();
-        var seeder = scope.ServiceProvider.GetRequiredService<SampleDataSeeder>();
+        await using var db = database.CreateContext();
+        var seeder = new SampleDataSeeder(db, TimeProvider.System);
         var players = SampleDataSeeder.DefaultPlayers;
-        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
 
         // Una partida guardada antes con un nombre parecido no debe impedir la carga.
         var manualId = SampleDataSeeder.MatchPrefix + "manual";
@@ -42,7 +40,7 @@ public sealed class SampleDataSeederTests(MemoryApiFactory factory)
         Assert.False(await db.FinishNotifications.AnyAsync(n => n.MatchId.StartsWith(SampleDataSeeder.MatchPrefix)));
 
         // Cada jugador juega contra los otros tres: 9 partidas en su historial.
-        var history = scope.ServiceProvider.GetRequiredService<IGameHistoryService>();
+        var history = new GameHistoryService(db);
         var stats = await history.GetStatsByPlayerAsync(players[0].UserId);
         Assert.Equal(9, stats.GamesPlayed);
         Assert.Equal(3, stats.Draws);
@@ -52,8 +50,8 @@ public sealed class SampleDataSeederTests(MemoryApiFactory factory)
     [Fact]
     public async Task RequiresAtLeastTwoPlayers()
     {
-        using var scope = factory.Services.CreateScope();
-        var seeder = scope.ServiceProvider.GetRequiredService<SampleDataSeeder>();
+        await using var db = database.CreateContext();
+        var seeder = new SampleDataSeeder(db, TimeProvider.System);
 
         await Assert.ThrowsAsync<ArgumentException>(() => seeder.SeedAsync([new("demo|solo", "Solo")]));
     }

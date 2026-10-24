@@ -11,8 +11,9 @@ Las reglas del juego están en [`docs/reglas-del-juego.md`](docs/reglas-del-jueg
 | `src/BattleHub.Memory.Domain` | Reglas del juego (`GameSession`, `Board`, `Player`) |
 | `src/BattleHub.Memory.Data` | Persistencia con EF Core y SQL Server ([ADR-001](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-001-motor-bd-juego-memoria.md)) |
 | `src/memory-microfrontend/memory-game` | Microfrontend en Aurelia 2, cargado por el Shell con Module Federation ([README](src/memory-microfrontend/memory-game/README.md)) |
-| `tests/BattleHub.Memory.UnitTests` | Pruebas unitarias del dominio |
-| `tests/BattleHub.Memory.IntegrationTests` | Pruebas de integración: API, JWT, SignalR, SQL y Matchmaking |
+| `tests/BattleHub.Memory.Domain.Tests` | Pruebas unitarias del dominio |
+| `tests/BattleHub.Memory.Data.Tests` | Pruebas de integración de Data (esquema y datos de ejemplo, SQL Server) |
+| `tests/BattleHub.Memory.Api.Tests` | Pruebas de la API: unitarias con Moq e integración (JWT, SignalR, SQL, Matchmaking) |
 | `scripts` | Guardar el secreto de Auth0 y arrancar con migraciones |
 | `docs` | Reglas del juego y guía de integración con el Shell, Auth0 y Matchmaking |
 
@@ -76,6 +77,12 @@ usar la rama `feat/interfaz-battlehub` de `battlehub-shell` y configurar en su
 ```bash
 cd src
 dotnet test BattleHub.Memory.slnx
+```
+
+Solo las unitarias (no necesitan base de datos):
+
+```bash
+dotnet test BattleHub.Memory.slnx --filter "Category!=Integration"
 ```
 
 Las pruebas de integración necesitan una base SQL Server:
