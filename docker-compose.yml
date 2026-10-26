@@ -1,0 +1,42 @@
+# API de Memory + SQL Server. Copiar .env.example a .env antes de usarlo.
+services:
+  sql:
+    # Misma imagen que usan las pruebas de integración (Testcontainers).
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Definir MSSQL_SA_PASSWORD en .env}
+    ports:
+      - "1433:1433"
+    volumes:
+      - memory-sql:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: src/BattleHub.Memory.Api/Dockerfile
+    depends_on:
+      sql:
+        condition: service_healthy
+    ports:
+      # Mismo puerto que "dotnet run": el microfrontend no cambia.
+      - "5095:8080"
+    environment:
+      # Igual que el perfil "http" de launchSettings.json.
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__MigrateOnStartup: "true"
+      SampleData__Enabled: "true"
+      ConnectionStrings__MemoryDatabase: "Server=sql,1433;Database=BattleHubMemoryDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
+      # Dentro del contenedor, localhost no es la máquina: Matchmaking corre afuera.
+      Matchmaking__BaseUrl: http://host.docker.internal:5211
+      # Opcional: sin el secreto la API funciona; solo queda pendiente el aviso a Matchmaking.
+      Matchmaking__Auth0__ClientSecret: ${MATCHMAKING_CLIENT_SECRET:-}
+
+volumes:
+  memory-sql:
