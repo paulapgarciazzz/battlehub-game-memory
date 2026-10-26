@@ -51,6 +51,16 @@ O desde Visual Studio / `dotnet run --project src/BattleHub.Memory.Api`.
 Queda en `http://localhost:5095`. Desde Visual Studio aplica las migraciones y
 carga los datos de ejemplo al arrancar (ver [Datos de ejemplo](#datos-de-ejemplo)).
 
+**Con Docker** (API + SQL Server, sin LocalDB):
+
+```powershell
+copy .env.example .env      # poner una contraseña en MSSQL_SA_PASSWORD
+docker compose up --build -d
+```
+
+La API queda en `http://localhost:5095` y SQL Server en `localhost,1433`.
+Se apaga con `docker compose down` (agregar `-v` para borrar también la base).
+
 ### 3. Microfrontend
 
 ```bash
@@ -92,6 +102,12 @@ Las pruebas de integración necesitan una base SQL Server:
 
   ```powershell
   setx MEMORY_TEST_CONNECTION "Server=(localdb)\mssqllocaldb;Integrated Security=true;TrustServerCertificate=true"
+  ```
+
+- **Con Docker** usan el SQL Server de `docker compose` si definen la variable con la contraseña de `.env`; sin la variable, Testcontainers crea su propio contenedor:
+
+  ```powershell
+  $env:MEMORY_TEST_CONNECTION = "Server=localhost,1433;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True"
   ```
 
   Cada corrida crea una base `BattleHubMemoryTests_...` y la borra al terminar; no toca `BattleHubMemoryDb`.

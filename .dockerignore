@@ -1,0 +1,11 @@
+# Solo se copia lo que necesita la imagen de la API.
+# Los obj/ de Windows rompen el restore dentro del contenedor Linux.
+**/bin
+**/obj
+**/node_modules
+.git
+.vs
+.vscode
+.env
+tests/
+src/memory-microfrontend/
