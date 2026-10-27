@@ -6,9 +6,11 @@ import { MemoryHttpService } from '../src/services/memory-http.service';
 export function createFakeHub() {
   return {
     configure: jest.fn(),
+    configureLocal: jest.fn(),
     clearCredentials: jest.fn(),
     connect: jest.fn().mockResolvedValue(undefined),
     joinMatch: jest.fn().mockResolvedValue(undefined),
+    joinLocalMatch: jest.fn().mockResolvedValue(undefined),
     flipCard: jest.fn().mockResolvedValue(undefined),
     disconnect: jest.fn().mockResolvedValue(undefined)
   };
