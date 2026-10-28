@@ -80,8 +80,6 @@ public class SampleDataSeeder
         if (await _db.GameResults.AnyAsync(r => matchIds.Contains(r.MatchId), ct))
             return 0;
 
-        // Solo se guardan resultados: estas partidas no existen en Matchmaking,
-        // así que no se crea ningún aviso de fin de partida.
         _db.GameResults.AddRange(results);
         await _db.SaveChangesAsync(ct);
 

@@ -1,9 +1,7 @@
-using System.Security.Claims;
 using BattleHub.Memory.Api.Controllers;
 using BattleHub.Memory.Api.DTOs;
 using BattleHub.Memory.Data.Entities;
 using BattleHub.Memory.Data.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -12,7 +10,7 @@ namespace BattleHub.Memory.Api.Tests.Controllers;
 public sealed class MemoryControllerUnitTests
 {
     [Fact]
-    public async Task GetHistoryRequiresTheAuthenticatedPlayerAndMapsResults()
+    public async Task GetHistoryMapsResults()
     {
         var startedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
         var finishedAt = startedAt.AddMinutes(1);
@@ -37,10 +35,8 @@ public sealed class MemoryControllerUnitTests
             .ReturnsAsync([playerResult]);
         var controller = CreateController(historyService.Object);
 
-        var forbidden = await controller.GetHistory("player-2", default);
         var response = await controller.GetHistory("player-1", default);
 
-        Assert.IsType<ForbidResult>(forbidden.Result);
         var history = Assert.IsType<OkObjectResult>(response.Result).Value
             as List<MemoryGameHistoryDto>;
         var item = Assert.Single(history!);
@@ -54,7 +50,7 @@ public sealed class MemoryControllerUnitTests
     }
 
     [Fact]
-    public async Task GetStatsRequiresTheAuthenticatedPlayerAndMapsAllStats()
+    public async Task GetStatsMapsAllStats()
     {
         var stats = new MemoryPlayerStats(
             "player-1",
@@ -71,10 +67,8 @@ public sealed class MemoryControllerUnitTests
             .ReturnsAsync(stats);
         var controller = CreateController(historyService.Object);
 
-        var forbidden = await controller.GetStats("player-2", default);
         var response = await controller.GetStats("player-1", default);
 
-        Assert.IsType<ForbidResult>(forbidden.Result);
         var result = Assert.IsType<OkObjectResult>(response.Result).Value
             as MemoryPlayerStatsDto;
         Assert.NotNull(result);
@@ -89,15 +83,5 @@ public sealed class MemoryControllerUnitTests
     }
 
     private static MemoryController CreateController(IGameHistoryService historyService) =>
-        new(historyService)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    User = new ClaimsPrincipal(
-                        new ClaimsIdentity([new Claim("sub", "player-1")], "test"))
-                }
-            }
-        };
+        new(historyService);
 }

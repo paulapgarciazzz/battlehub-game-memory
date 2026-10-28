@@ -60,14 +60,6 @@ public class GameResultService : IGameResultService
 
         _db.GameResults.Add(result);
 
-        // El aviso para Matchmaking se guarda en el mismo SaveChanges que el
-        // resultado (una sola transacción). FinishWorker lo envía después.
-        _db.FinishNotifications.Add(new FinishNotification
-        {
-            MatchId = session.MatchId,
-            NextAttemptAt = DateTimeOffset.UtcNow
-        });
-
         await _db.SaveChangesAsync(ct);
 
         return result.Id;
