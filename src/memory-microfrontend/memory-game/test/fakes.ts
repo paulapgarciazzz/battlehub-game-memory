@@ -7,7 +7,7 @@ export function createFakeHub() {
   return {
     configure: jest.fn(),
     configureLocal: jest.fn(),
-    clearCredentials: jest.fn(),
+    clearPlayer: jest.fn(),
     connect: jest.fn().mockResolvedValue(undefined),
     joinMatch: jest.fn().mockResolvedValue(undefined),
     joinLocalMatch: jest.fn().mockResolvedValue(undefined),
@@ -18,7 +18,6 @@ export function createFakeHub() {
 
 export function createFakeHttp() {
   return {
-    configure: jest.fn(),
     getResult: jest.fn().mockResolvedValue({}),
     getHistory: jest.fn().mockResolvedValue([]),
     saveResult: jest.fn().mockResolvedValue({ resultId: 'r1', matchId: 'm1', message: 'ok' })

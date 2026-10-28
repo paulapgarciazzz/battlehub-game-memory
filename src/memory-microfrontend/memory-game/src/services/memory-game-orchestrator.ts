@@ -3,6 +3,7 @@ import {IEventAggregator, resolve, singleton} from 'aurelia';
 import {MemoryHubService, MemoryHubEvents} from './memory-hub.service';
 import {MemoryHttpService} from './memory-http.service';
 import {MemoryGameState} from '../state/memory-game-state';
+import type {GameFinishedDetail} from '../game-contracts';
 import {
   PlayerJoinedMessage,
   GameReadyMessage,
@@ -29,21 +30,20 @@ export class MemoryGameOrchestrator {
   // Temporizadores que se cancelan al salir o reiniciar.
   private revealTimers = new Set<number>();
 
-  // Proveedor de token de Matchmaking entregado por el Shell.
-  private roomToken: (() => Promise<string>) | null = null;
   private localMode = false;
 
-  /** Configura los proveedores de tokens para el modo competitivo. */
- public configure(
-  token: () => Promise<string>,
-  roomToken: () => Promise<string>
-): void {
-  this.localMode = false;
-  this.roomToken = roomToken;
+  // Aviso de fin de partida para el Shell (lo configura el GameModule).
+  private gameFinished: ((detail: GameFinishedDetail) => void) | null = null;
+  private notifiedMatchId: string | null = null;
 
-  this.hub.configure(token, roomToken);
-  this.http.configure(token);
-}
+  /** Configura el modo competitivo dentro del Shell. */
+  public configure(onGameFinished: (detail: GameFinishedDetail) => void): void {
+    this.localMode = false;
+    this.gameFinished = onGameFinished;
+    this.notifiedMatchId = null;
+
+    this.hub.configure();
+  }
 
   constructor() {
     this.subscribe();
@@ -117,12 +117,6 @@ export class MemoryGameOrchestrator {
     userId: string,
     displayName: string
   ): Promise<void> {
-    if (!this.roomToken) {
-      throw new Error(
-        'Abrir Memory desde el Shell con sus proveedores de tokens.'
-      );
-    }
-
     this.subscribe();
 
     this.state.practiceMode = false;
@@ -137,9 +131,7 @@ export class MemoryGameOrchestrator {
 
     // El servidor controla el comienzo y las fases de la partida.
     await this.hub.connect();
-    await this.hub.joinMatch(matchId);
-
-    
+    await this.hub.joinMatch(matchId, userId, displayName);
   }
 
   // =========================================================
@@ -609,9 +601,9 @@ public async joinLocalMatch(
     if (!wasPractice) {
       await this.hub.disconnect();
 
-      this.hub.clearCredentials();
-      this.http.configure(null);
-      this.roomToken = null;
+      this.hub.clearPlayer();
+      this.gameFinished = null;
+      this.notifiedMatchId = null;
     }
 
     this.state.reset();
@@ -820,6 +812,8 @@ public async joinLocalMatch(
   this.state.resultSaveError = this.localMode
   ? null
   : 'Esperando confirmación del guardado del servidor.';
+
+    this.notifyGameFinished();
   }
 
   /** Actualiza el estado con la información oficial del servidor. */
@@ -860,7 +854,39 @@ public async joinLocalMatch(
       if (msg.resultSaved) {
         void this.confirmResult();
       }
+
+      this.notifyGameFinished();
     }
+  }
+
+  /**
+   * Avisa al Shell que la partida terminó, una sola vez por partida. Solo
+   * aplica dentro del Shell: el modo local, solo y práctica no avisan.
+   */
+  private notifyGameFinished(): void {
+    if (
+      !this.gameFinished ||
+      !this.state.embedded ||
+      this.localMode ||
+      this.state.practiceMode ||
+      this.notifiedMatchId === this.state.matchId
+    ) {
+      return;
+    }
+
+    this.notifiedMatchId = this.state.matchId;
+
+    this.gameFinished({
+      matchId: this.state.matchId,
+      gameType: 'memory',
+      isDraw: this.state.isDraw,
+      winnerUserId: this.state.winnerUserId,
+      players: this.state.players.map(player => ({
+        userId: player.userId,
+        displayName: player.displayName,
+        score: player.matchedPairs
+      }))
+    });
   }
 
   /** Comprueba que el resultado competitivo exista en la API. */

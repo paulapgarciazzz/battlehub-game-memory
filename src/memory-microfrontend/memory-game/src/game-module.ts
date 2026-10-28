@@ -1,7 +1,12 @@
 import {customElement, resolve} from 'aurelia';
 import template from './game-module.html';
 import './memory-app.css';
-import type {GameContext, GameModule as IGameModule} from './game-contracts';
+import {
+  GAME_FINISHED_EVENT,
+  type GameContext,
+  type GameFinishedDetail,
+  type GameModule as IGameModule
+} from './game-contracts';
 import {GameView} from './resources/elements/game-view';
 import {MemoryGameOrchestrator} from './services/memory-game-orchestrator';
 import {MemoryGameState} from './state/memory-game-state';
@@ -14,7 +19,9 @@ import backgroundImage from './assets/backgrounds/background.webp';
  * con <au-compose>.
  *
  * El matchId y el usuario vienen del Shell (que los recibe de Matchmaking y
- * Auth0): aquí no hay pantalla de unión ni código de partida.
+ * Auth0): aquí no hay pantalla de unión ni código de partida. El juego no
+ * tiene contacto con Auth0 ni con Matchmaking. Al terminar la partida emite
+ * el evento DOM "battlehub:game-finished" y el Shell avisa a Matchmaking.
  *
  * El nombre del elemento lleva el prefijo del juego (ADR-003, sección 3). Con
  * @customElement explícito, las dependencias se declaran aquí y no con
@@ -22,6 +29,9 @@ import backgroundImage from './assets/backgrounds/background.webp';
  */
 @customElement({name: 'memory-game-module', template, dependencies: [GameView]})
 export class GameModule implements IGameModule {
+  // Aurelia lo asigna al mostrar el componente; da acceso al elemento host.
+  // "declare": no crea el campo, para no pisar el que asigna Aurelia.
+  declare public readonly $controller?: {host: HTMLElement};
   public readonly state = resolve(MemoryGameState);
   public readonly backgroundStyle = `background-image: url(${backgroundImage})`;
 
@@ -37,15 +47,7 @@ export class GameModule implements IGameModule {
       throw new Error('El contexto del juego necesita matchId y currentUser (id y displayName).');
     }
 
-    // El Shell entrega dos tokens del jugador: uno para la API de Memory y
-    // otro para Matchmaking. Sin ellos no se puede jugar, así que se rechaza
-    // initialize() y el Shell lo muestra como LIFECYCLE_ERROR (ADR-003 §6).
-    if (typeof context.getAccessToken !== 'function'
-      || typeof context.getMatchmakingAccessToken !== 'function') {
-      throw new Error('Memory requiere los dos proveedores de tokens del Shell.');
-    }
-
-    this.orchestrator.configure(context.getAccessToken, context.getMatchmakingAccessToken);
+    this.orchestrator.configure(detail => this.emitGameFinished(detail));
 
     // Los servicios son singleton: se limpia lo que pudo quedar de una partida anterior.
     this.state.reset();
@@ -81,6 +83,20 @@ export class GameModule implements IGameModule {
     // El juego es en tiempo real: el servidor no se detiene (el turno y su
     // temporizador siguen corriendo). Solo se bloquean las jugadas locales.
     this.state.paused = true;
+  }
+
+  /**
+   * Avisa al Shell que la partida terminó. El evento sube desde el elemento
+   * del juego; si todavía no hay elemento, se emite en window.
+   */
+  private emitGameFinished(detail: GameFinishedDetail): void {
+    const target: EventTarget = this.$controller?.host ?? window;
+
+    target.dispatchEvent(new CustomEvent<GameFinishedDetail>(GAME_FINISHED_EVENT, {
+      detail,
+      bubbles: true,
+      composed: true
+    }));
   }
 
   public async dispose(): Promise<void> {

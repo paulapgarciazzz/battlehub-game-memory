@@ -32,34 +32,25 @@ export class MemoryHubService {
 
   private connection: signalR.HubConnection | null = null;
 
-  private token: (() => Promise<string>) | null = null;
-  private roomToken: (() => Promise<string>) | null = null;
-
   private matchId: string | null = null;
+
+  // Jugador de esta conexión: se usa para volver a entrar al reconectar.
+  private userId: string | null = null;
+  private displayName: string | null = null;
 
   // Modo local independiente del Shell.
   private localMode = false;
-  private localUserId: string | null = null;
-  private localDisplayName: string | null = null;
 
-  // Se utiliza en el modo competitivo de BattleHub.
-  public configure(
-    token: () => Promise<string>,
-    roomToken: () => Promise<string>
-  ): void {
+  // Se utiliza en el modo competitivo de BattleHub (dentro del Shell).
+  public configure(): void {
     this.localMode = false;
-    this.localUserId = null;
-    this.localDisplayName = null;
-
-    this.token = token;
-    this.roomToken = roomToken;
+    this.userId = null;
+    this.displayName = null;
   }
 
   // Se utiliza cuando se entra directamente a localhost:4003.
   public configureLocal(): void {
     this.localMode = true;
-    this.token = null;
-    this.roomToken = null;
   }
 
   public async connect(): Promise<void> {
@@ -74,12 +65,6 @@ export class MemoryHubService {
       throw new Error('Configurar la URL del hub de Memory.');
     }
 
-    if (!this.localMode && (!this.token || !this.roomToken)) {
-      throw new Error(
-        'Faltan los proveedores de tokens del Shell de BattleHub.'
-      );
-    }
-
     if (this.connection) {
       await this.disconnect();
     }
@@ -91,22 +76,8 @@ export class MemoryHubService {
       ? `http://${window.location.hostname}:5095/hubs/memory-local`
       : `${environment.hubBaseUrl}/hubs/memory`;
 
-    const options: signalR.IHttpConnectionOptions = this.localMode
-      ? {}
-      : {
-          accessTokenFactory: () => {
-            if (!this.token) {
-              return Promise.reject(
-                new Error('La partida se cerró.')
-              );
-            }
-
-            return this.token();
-          }
-        };
-
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl, options)
+      .withUrl(hubUrl)
       .withAutomaticReconnect()
       .build();
 
@@ -130,19 +101,11 @@ export class MemoryHubService {
           return;
         }
 
-        if (this.localMode) {
-          if (!this.localUserId || !this.localDisplayName) {
-            throw new Error('Faltan los datos del jugador local.');
-          }
-
-          await this.joinLocalMatch(
-            this.matchId,
-            this.localUserId,
-            this.localDisplayName
-          );
-        } else {
-          await this.joinMatch(this.matchId);
+        if (!this.userId || !this.displayName) {
+          throw new Error('Faltan los datos del jugador.');
         }
+
+        await this.invokeJoin(this.matchId, this.userId, this.displayName);
       } catch {
         this.ea.publish(MemoryHubEvents.ConnectionClosed, null);
         await connection.stop();
@@ -167,28 +130,22 @@ export class MemoryHubService {
     }
   }
 
-  // Conexión competitiva: conserva los tokens de Matchmaking.
-  public async joinMatch(matchId: string): Promise<void> {
-    if (
-      !this.connection ||
-      !this.roomToken ||
-      this.localMode
-    ) {
+  // Conexión competitiva: el usuario es el currentUser que entrega el Shell.
+  public async joinMatch(
+    matchId: string,
+    userId: string,
+    displayName: string
+  ): Promise<void> {
+    if (!this.connection || this.localMode) {
       throw new Error(
         'Memory no está conectado al modo competitivo.'
       );
     }
 
-    this.matchId = matchId;
-
-    await this.connection.invoke(
-      'JoinMatch',
-      matchId,
-      await this.roomToken()
-    );
+    await this.invokeJoin(matchId, userId, displayName);
   }
 
-  // Conexión local: no necesita tokens del Shell.
+  // Conexión local: se juega sin el Shell.
   public async joinLocalMatch(
     matchId: string,
     userId: string,
@@ -198,9 +155,21 @@ export class MemoryHubService {
       throw new Error('Memory no está conectado al modo local.');
     }
 
+    await this.invokeJoin(matchId, userId, displayName);
+  }
+
+  private async invokeJoin(
+    matchId: string,
+    userId: string,
+    displayName: string
+  ): Promise<void> {
+    if (!this.connection) {
+      throw new Error('Memory no está conectado.');
+    }
+
     this.matchId = matchId;
-    this.localUserId = userId;
-    this.localDisplayName = displayName;
+    this.userId = userId;
+    this.displayName = displayName;
 
     await this.connection.invoke(
       'JoinMatch',
@@ -230,12 +199,9 @@ export class MemoryHubService {
     await connection?.stop();
   }
 
-  public clearCredentials(): void {
-    this.token = null;
-    this.roomToken = null;
-
+  public clearPlayer(): void {
     this.localMode = false;
-    this.localUserId = null;
-    this.localDisplayName = null;
+    this.userId = null;
+    this.displayName = null;
   }
 }
