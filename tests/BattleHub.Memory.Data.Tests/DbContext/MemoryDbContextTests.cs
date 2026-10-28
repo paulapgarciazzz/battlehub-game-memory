@@ -34,19 +34,8 @@ public sealed class MemoryDbContextTests(MemoryDatabaseFixture database)
             Assert.DoesNotContain("Cards", primaryKeys.Keys);
             Assert.Contains("GameResults", primaryKeys.Keys);
             Assert.Contains("GameResultPlayers", primaryKeys.Keys);
-            Assert.Contains("FinishNotifications", primaryKeys.Keys);
+            Assert.DoesNotContain("FinishNotifications", primaryKeys.Keys);
             Assert.All(primaryKeys.Values, key => Assert.Equal("uniqueidentifier", key.Type));
-            Assert.Equal("Id", primaryKeys["FinishNotifications"].Column);
-
-            command.CommandText = """
-                SELECT COUNT(*)
-                FROM sys.indexes i
-                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-                JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
-                WHERE i.object_id = OBJECT_ID(N'[FinishNotifications]')
-                  AND i.is_unique = 1 AND c.name = N'MatchId';
-                """;
-            Assert.True(Convert.ToInt32(await command.ExecuteScalarAsync()) > 0);
         }
         finally
         {

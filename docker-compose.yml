@@ -33,10 +33,6 @@ services:
       Database__MigrateOnStartup: "true"
       SampleData__Enabled: "true"
       ConnectionStrings__MemoryDatabase: "Server=sql,1433;Database=BattleHubMemoryDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
-      # Dentro del contenedor, localhost no es la máquina: Matchmaking corre afuera.
-      Matchmaking__BaseUrl: http://host.docker.internal:5211
-      # Opcional: sin el secreto la API funciona; solo queda pendiente el aviso a Matchmaking.
-      Matchmaking__Auth0__ClientSecret: ${MATCHMAKING_CLIENT_SECRET:-}
 
 volumes:
   memory-sql:

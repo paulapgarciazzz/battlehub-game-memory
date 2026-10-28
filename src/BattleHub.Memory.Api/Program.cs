@@ -1,9 +1,7 @@
 
 using BattleHub.Memory.Data.DbContext;
-using BattleHub.Memory.Api.Auth;
 using BattleHub.Memory.Api.Hubs;
 using BattleHub.Memory.Api.Services;
-using BattleHub.Memory.Api.Matchmaking;
 using BattleHub.Memory.Data.Seed;
 using BattleHub.Memory.Data.Services;
 using Microsoft.EntityFrameworkCore;
@@ -31,27 +29,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<MemoryLocalGameService>();
 builder.Services.AddSingleton<MemoryLocalTurnTimerService>();
 
-// Cliente HTTP hacia Matchmaking
-builder.Services
-    .AddHttpClient("matchmaking", client =>
-        client.Timeout = TimeSpan.FromSeconds(10))
-    .ConfigurePrimaryHttpMessageHandler(() =>
-        new HttpClientHandler { AllowAutoRedirect = false });
-
-builder.Services.AddSingleton<IMatchmakingGateway>(services =>
-    new MatchmakingGateway(
-        services.GetRequiredService<IHttpClientFactory>()
-            .CreateClient("matchmaking"),
-        builder.Configuration,
-        services.GetRequiredService<TimeProvider>(),
-        services.GetRequiredService<ILogger<MatchmakingGateway>>()));
-
-// Tareas en segundo plano de las partidas competitivas
-builder.Services.AddHostedService<FinishWorker>();
+// Reintenta guardar los resultados que fallaron al terminar la partida
 builder.Services.AddHostedService<ResultRetryWorker>();
-
-// Auth0: autenticación y autorización para BattleHub
-builder.Services.AddMemoryAuth(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -108,23 +87,19 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 
-    // Modo local: no usa Auth0 ni Matchmaking.
+    // Modo local: no guarda resultados.
     // No debe exponerse como endpoint de producción.
     app.MapHub<MemoryLocalHub>("/hubs/memory-local");
 }
 
-// CORS debe ir antes de autenticación y autorización
 app.UseCors("MemoryCors");
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapGet("/health", () =>
     Results.Ok(new { status = "Healthy" }));
 
-// Hub competitivo original: conserva la autorización de BattleHub
-app.MapHub<MemoryHub>("/hubs/memory")
-    .RequireAuthorization(MemoryAuth.Play);
+// Hub de las partidas de BattleHub. El juego no usa Auth0: el Shell
+// entrega el usuario y el juego avisa al Shell cuando termina la partida.
+app.MapHub<MemoryHub>("/hubs/memory");
 
 app.MapControllers();
 

@@ -10,7 +10,7 @@ namespace BattleHub.Memory.Data.Tests.Seed;
 public sealed class SampleDataSeederTests(MemoryDatabaseFixture database)
 {
     [Fact]
-    public async Task LoadsHistoryOnceWithoutNotifyingMatchmaking()
+    public async Task LoadsHistoryOnce()
     {
         await using var db = database.CreateContext();
         var seeder = new SampleDataSeeder(db, TimeProvider.System);
@@ -37,7 +37,6 @@ public sealed class SampleDataSeederTests(MemoryDatabaseFixture database)
             Assert.True(r.StartedAt < r.FinishedAt);
             Assert.Equal(r.IsDraw, r.WinnerUserId is null);
         });
-        Assert.False(await db.FinishNotifications.AnyAsync(n => n.MatchId.StartsWith(SampleDataSeeder.MatchPrefix)));
 
         // Cada jugador juega contra los otros tres: 9 partidas en su historial.
         var history = new GameHistoryService(db);

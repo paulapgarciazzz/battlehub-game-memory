@@ -44,7 +44,7 @@ public sealed class GameResultServiceTests(MemoryDatabaseFixture database)
     }
 
     [Fact]
-    public async Task SaveResult_IsIdempotentAndStoresPlayersAndNotification()
+    public async Task SaveResult_IsIdempotentAndStoresPlayers()
     {
         await using var db = database.CreateContext();
         var service = new GameResultService(db);
@@ -61,7 +61,6 @@ public sealed class GameResultServiceTests(MemoryDatabaseFixture database)
         Assert.False(result.IsDraw);
         Assert.Equal(2, result.Players.Count);
         Assert.Equal(5, result.Players.Single(player => player.UserId == "u1").Score);
-        Assert.Equal(1, await db.FinishNotifications.CountAsync(item => item.MatchId == matchId));
         Assert.Null(await service.GetByMatchIdAsync("missing-" + matchId));
     }
 

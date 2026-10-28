@@ -57,6 +57,29 @@ public sealed class TurnTimerServiceTests
         Assert.Null(service.Deadline(session.MatchId));
     }
 
+    [Fact]
+    public async Task ExpiredTurnPassesToTheOtherPlayerAndNotifiesTheGroup()
+    {
+        var group = new Mock<IClientProxy>();
+        var notified = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        group.Setup(client => client.SendCoreAsync("TurnTimeout", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            .Callback(notified.SetResult)
+            .Returns(Task.CompletedTask);
+        var clients = new Mock<IHubClients>();
+        clients.Setup(c => c.Group("timer-timeout")).Returns(group.Object);
+        var hub = new Mock<IHubContext<MemoryHub>>();
+        hub.Setup(h => h.Clients).Returns(clients.Object);
+        var service = new TurnTimerService(hub.Object, NullLogger<TurnTimerService>.Instance);
+        var session = CreateSession("timer-timeout");
+
+        service.Start(session);
+        await notified.Task.WaitAsync(TimeSpan.FromSeconds(GameSession.TurnTimeoutSeconds + 10));
+
+        Assert.Equal("u2", session.CurrentPlayer.UserId);
+        Assert.NotNull(service.Deadline(session.MatchId));
+        service.Stop(session.MatchId);
+    }
+
     private static TurnTimerService CreateService() =>
         new(
             Mock.Of<IHubContext<MemoryHub>>(),

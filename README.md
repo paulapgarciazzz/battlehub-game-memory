@@ -14,9 +14,9 @@ Las reglas del juego están en [ `docs/reglas-del-juego.md`](docs/reglas-del-jue
 | `src/memory-microfrontend/memory-game` | Microfrontend en Aurelia 2, cargado por el Shell con Module Federation ([README](src/memory-microfrontend/memory-game/README.md))                              |
 | `tests/BattleHub.Memory.Domain.Tests`  | Pruebas unitarias del dominio                                                                                                                                  |
 | `tests/BattleHub.Memory.Data.Tests`    | Pruebas de integración de Data: esquema y datos de ejemplo en SQL Server                                                                                       |
-| `tests/BattleHub.Memory.Api.Tests`     | Pruebas de la API: unitarias con Moq e integración de JWT, SignalR, SQL y Matchmaking                                                                          |
-| `scripts`                              | Scripts auxiliares para la configuración de credenciales y el desarrollo local                                                                                 |
-| `docs`                                 | Reglas del juego y guía de integración con el Shell, Auth0 y Matchmaking                                                                                       |
+| `tests/BattleHub.Memory.Api.Tests`     | Pruebas de la API: unitarias con Moq e integración de SignalR y SQL                                                                                            |
+| `scripts`                              | Script auxiliar para el desarrollo local                                                                                                                       |
+| `docs`                                 | Reglas del juego, API y contrato con el Shell                                                                                                                  |
 | `Dockerfile` de la API                 | Compilación y publicación de la API en una imagen multi-stage, ubicada en `src/BattleHub.Memory.Api/Dockerfile`                                                |
 | `docker-compose.yml`                   | Configuración para ejecutar la API y SQL Server mediante Docker Compose                                                                                        |
 
@@ -48,8 +48,6 @@ Copy-Item .env.example .env
 Si ya tienes un archivo `.env`, no lo sobrescribas. Ábrelo y modifica las variables necesarias.
 
 Edita `.env` y establece una contraseña segura para `MSSQL_SA_PASSWORD`. Debe cumplir los requisitos de SQL Server y no ser una contraseña real compartida públicamente.
-
-La variable `MATCHMAKING_CLIENT_SECRET` es opcional. Permite a la API autenticarse ante Matchmaking para enviar avisos cuando termina una partida.
 
 **Importante:** el archivo `.env` contiene configuración local y secretos. No lo subas al repositorio ni compartas su contenido.
 
@@ -140,14 +138,6 @@ La dirección y el perfil de ejecución pueden depender de la configuración loc
 
 La configuración de conexión a SQL Server debe coincidir con la instancia disponible. Para aplicar las migraciones al arrancar, configura `Database:MigrateOnStartup` según el mecanismo admitido por la aplicación.
 
-### Credenciales de Matchmaking
-
-La API utiliza un cliente máquina a máquina de Auth0 para avisar a Matchmaking cuando termina una partida. El secreto no debe guardarse en `appsettings.json` ni compartirse en el repositorio.
-
-Para el desarrollo local, puede configurarse mediante .NET User Secrets. Para Docker, puede proporcionarse mediante la variable de entorno `MATCHMAKING_CLIENT_SECRET`, que Compose asigna a `Matchmaking__Auth0__ClientSecret`.
-
-Si no se configura este secreto, el juego puede funcionar, pero el aviso autenticado a Matchmaking podría quedar pendiente.
-
 ## Cómo ejecutar el microfrontend
 
 Abre una terminal y ejecuta:
@@ -164,17 +154,14 @@ Se requiere Node.js 24 LTS (`>=24.11.0 <25`).
 
 ## Cómo jugar
 
-Las partidas se juegan **desde el Shell** (`http://localhost:4000`), entrando a una sala real de Matchmaking con dos cuentas de Auth0.
+Las partidas competitivas se juegan **desde el Shell** (`http://localhost:4000`). El Shell inicia sesión con Auth0, obtiene la sala de Matchmaking y le entrega al juego el `matchId` y el `currentUser`.
 
-El Shell entrega al juego el `matchId` y los tokens de los jugadores. La página del microfrontend en `localhost:4003` no permite iniciar una partida escribiendo manualmente un usuario.
+El juego **no tiene contacto con Auth0 ni con Matchmaking**:
 
-Para probar con el Shell local mientras el soporte para Memory no esté en `main`, puede utilizarse la rama `feat/interfaz-battlehub` de `battlehub-shell` y configurar en su archivo `.env` la variable:
+- La API y el hub no piden token. El jugador es el `currentUser` que entrega el Shell.
+- Cuando la partida termina, el microfrontend emite el evento DOM `battlehub:game-finished` con el ganador y los puntajes. El Shell lo escucha y avisa a Matchmaking. El juego nunca llama a Matchmaking.
 
-```dotenv
-AUTH0_MEMORY_AUDIENCE=https://api.battlehub.local/memory
-```
-
-La disponibilidad de la integración depende de la configuración local del Shell, Auth0 y Matchmaking.
+El detalle del evento está en [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
 
 ## Pruebas
 
@@ -231,11 +218,7 @@ Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api
 | Clave                              | Para qué sirve                                                                                                  |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `ConnectionStrings:MemoryDatabase` | Cadena de conexión a SQL Server; en el desarrollo local puede utilizar LocalDB con la base `BattleHubMemoryDb`. |
-| `Auth:Domain`                      | Dominio o tenant de Auth0.                                                                                      |
-| `Auth:Audience`                    | Audiencia de la API de Memory.                                                                                  |
 | `Cors:Origins`                     | Orígenes permitidos, incluidos el Shell y el microfrontend.                                                     |
-| `Matchmaking:BaseUrl`              | Dirección de Matchmaking; por ejemplo, `http://localhost:5211` en el entorno local.                             |
-| `Matchmaking:Auth0:ClientSecret`   | Secreto del cliente M2M utilizado para avisar a Matchmaking.                                                    |
 | `Database:MigrateOnStartup`        | Indica si la API aplica las migraciones al arrancar. En Docker Compose está habilitado.                         |
 | `SampleData:Enabled`               | Indica si se cargan partidas de ejemplo al arrancar.                                                            |
 | `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo.                                           |
@@ -245,7 +228,6 @@ En la configuración de Docker Compose se utilizan variables de entorno de .NET 
 - `ConnectionStrings__MemoryDatabase`
 - `Database__MigrateOnStartup`
 - `SampleData__Enabled`
-- `Matchmaking__Auth0__ClientSecret`
 
 Los valores de conexión y credenciales dependen del entorno de ejecución.
 
@@ -257,9 +239,8 @@ Los jugadores predeterminados son Ana, Bruno, Carla y Diego (`demo|ana`, `demo|b
 
 - La carga se implementa en `src/BattleHub.Memory.Data/Seed/SampleDataSeeder.cs`, fuera del `DbContext`.
 - La carga está diseñada para ejecutarse una sola vez: si ya existen las partidas `ejemplo-001` a `ejemplo-018`, no vuelve a insertarlas.
-- Estas partidas no se notifican a Matchmaking porque no existen allí como partidas reales.
 
-Para asociar partidas de ejemplo a una cuenta real, puedes configurar su identificador `sub` de Auth0 mediante variables de entorno. Por ejemplo:
+Para asociar partidas de ejemplo a una cuenta real, puedes configurar el identificador del usuario (el `currentUser.id` que entrega el Shell) mediante variables de entorno. Por ejemplo:
 
 ```powershell
 $env:SampleData__Players__0__UserId = "auth0|su-id"
@@ -277,15 +258,15 @@ A partir de [ `battlehub-contracts`](https://github.com/javiercoulon-public/batt
 - Contrato de entrada al juego (`matchId`, `gameType`, `currentUser`) y ciclo de vida de `GameModule` (contrato 03).
 - API de resultados, historial y estadísticas (contrato 04).
 - Integración con el Shell mediante Module Federation (ADR-003).
-- Aviso de finalización de partidas a Matchmaking mediante `POST /api/matches/{id}/finish` (ADR-004).
+- Aviso de fin de partida al Shell con el evento DOM `battlehub:game-finished`. El Shell avisa a Matchmaking.
 
-Para más información sobre la integración con Auth0, Matchmaking y el Shell, consulta [`docs/integracion-shell-auth0.md`](docs/integracion-shell-auth0.md).
+Para más información sobre la API y el contrato con el Shell, consulta [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
 
 ## Límites conocidos
 
 - Las partidas en curso se mantienen en memoria. La API debe ejecutarse en **una sola instancia** para evitar inconsistencias entre sesiones.
 - Si la API se reinicia, las partidas que estaban en curso se pierden, aunque los resultados previamente guardados en la base de datos permanecen.
-- La integración de avisos con Matchmaking requiere que ese servicio esté disponible y que las credenciales correspondientes estén configuradas.
+- Como el juego no usa Auth0, la API confía en el `userId` que entrega el Shell y no restringe quién consulta el historial, las estadísticas o los resultados.
 
 ## Equipo
 

@@ -15,7 +15,6 @@ describe('MemoryHttpService', () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    service.configure(async () => 'player-token');
   });
 
   afterAll(() => {
@@ -33,7 +32,7 @@ describe('MemoryHttpService', () => {
     } as unknown as Response;
   }
 
-  it('gets an encoded match result with the player token', async () => {
+  it('gets an encoded match result without an Auth0 token', async () => {
     const result = {matchId: 'room/one'};
     fetchMock.mockResolvedValue(response(result));
 
@@ -42,7 +41,6 @@ describe('MemoryHttpService', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:5095/api/games/memory/results/room%2Fone',
       {headers: {
-        Authorization: 'Bearer player-token',
         'Content-Type': 'application/json'
       }}
     );
@@ -103,14 +101,5 @@ describe('MemoryHttpService', () => {
     await expect(service.saveResult('m1', new Date())).rejects.toThrow(
       'No se pudo guardar el resultado de la partida.'
     );
-  });
-
-  it('requires a token provider before making API requests', async () => {
-    service.configure(null);
-
-    await expect(service.getHistory('u1')).rejects.toThrow(
-      'Abrir Memory desde el Shell.'
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

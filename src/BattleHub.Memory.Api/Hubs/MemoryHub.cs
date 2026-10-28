@@ -1,8 +1,5 @@
-using BattleHub.Memory.Api.Auth;
-using BattleHub.Memory.Api.Matchmaking;
 using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Domain;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BattleHub.Memory.Api.Hubs;
@@ -11,69 +8,61 @@ namespace BattleHub.Memory.Api.Hubs;
 /// Hub propio del juego de memoria, montado en /hubs/memory.
 /// Es independiente del Lobby Hub de Matchmaking.
 ///
-/// Solo pueden conectarse jugadores autenticados con Auth0 (política Play):
-/// la identidad sale del claim "sub" del token, nunca de un userId enviado
-/// por el navegador.
+/// El juego no tiene contacto con Auth0 ni con Matchmaking: el Shell ya
+/// autenticó al usuario y le entrega al juego el matchId y el currentUser.
+/// Al terminar, el microfrontend avisa al Shell y el Shell avisa a Matchmaking.
 /// </summary>
-[Authorize(Policy = MemoryAuth.Play)]
 public sealed class MemoryHub(
     MemoryGameService games,
     TurnTimerService timers,
     MatchResultRecorder recorder,
-    IMatchmakingGateway matchmaking,
     ILogger<MemoryHub> logger) : Hub
 {
     /// <summary>
-    /// Une al jugador autenticado a la partida. También sirve para volver a
-    /// entrar después de recargar la página: en ese caso recibe el estado
-    /// actual (StateSnapshot) y la previsualización no se repite.
+    /// Une al jugador a la partida. Los dos primeros jugadores distintos que
+    /// entran con el mismo matchId forman la partida. También sirve para
+    /// volver a entrar después de recargar la página: en ese caso recibe el
+    /// estado actual (StateSnapshot) y la previsualización no se repite.
     /// </summary>
-    /// <param name="matchmakingAccessToken">
-    /// Token del usuario para Matchmaking. Se usa solo para consultar la sala.
-    /// </param>
-    public async Task JoinMatch(string matchId, string matchmakingAccessToken)
+    public async Task JoinMatch(string matchId, string userId, string displayName)
     {
-        var userId = MemoryAuth.UserId(Context.User!);
+        matchId = (matchId ?? "").Trim();
+        userId = (userId ?? "").Trim();
+        displayName = (displayName ?? "").Trim();
 
-        // Si la partida ya terminó en memoria, se acepta que la sala de
-        // Matchmaking esté en Finished (el jugador vuelve a ver el resultado).
-        var completed = games.TryGetSession(matchId, out var restored) && restored.IsFinished;
-
-        // Matchmaking es la fuente de verdad: la sala debe existir, ser de
-        // memory, estar iniciada, tener 2 jugadores y el usuario debe estar en ella.
-        var room = await matchmaking.ValidateAsync(
-            matchId,
-            userId,
-            matchmakingAccessToken,
-            Context.ConnectionAborted,
-            completed);
-
-        // Si la partida ya existe, los jugadores de Matchmaking tienen que ser
-        // los mismos con los que se creó.
-        if (games.TryGetSession(matchId, out var existing)
-            && !existing.Players.Select(p => p.UserId).Order()
-                .SequenceEqual(room.Participants.Select(p => p.UserId).Order()))
+        if (matchId.Length is < 1 or > 64
+            || userId.Length is < 1 or > 128
+            || displayName.Length is < 1 or > 50)
         {
-            throw new HubException("MATCH_ROSTER_CHANGED");
+            throw new HubException("INVALID_JOIN");
         }
 
-        // El nombre que se muestra sale del roster de Matchmaking.
-        var player = room.Participants.Single(p => p.UserId == userId);
+        GameSession? session;
+        bool created;
 
-        var session = games.AddPlayer(
-            matchId,
-            new Player(userId, player.DisplayName),
-            out var created);
+        try
+        {
+            session = games.AddPlayer(
+                matchId,
+                new Player(userId, displayName),
+                out created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // La partida ya tiene a sus dos jugadores.
+            throw new HubException(ex.Message);
+        }
 
-        // Se recuerda en qué partida está esta conexión: FlipCard solo se
-        // acepta para esa partida.
+        // Se recuerda quién es esta conexión y en qué partida está:
+        // FlipCard solo se acepta para esa partida y ese jugador.
         Context.Items["match"] = matchId;
+        Context.Items["userId"] = userId;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, matchId);
 
         await Clients.Group(matchId).SendAsync(
             "PlayerJoined",
-            new { UserId = userId, player.DisplayName });
+            new { UserId = userId, DisplayName = displayName });
 
         // Todavía falta el segundo jugador.
         if (session is null)
@@ -130,8 +119,8 @@ public sealed class MemoryHub(
     }
 
     /// <summary>
-    /// Voltea una carta del jugador autenticado y sincroniza la jugada con
-    /// los dos jugadores.
+    /// Voltea una carta del jugador de esta conexión y sincroniza la jugada
+    /// con los dos jugadores.
     /// </summary>
     public async Task FlipCard(string matchId, int cardId)
     {
@@ -145,7 +134,7 @@ public sealed class MemoryHub(
         if (games.IsPreview(matchId))
             throw new HubException("PREVIEW_ACTIVE");
 
-        var userId = MemoryAuth.UserId(Context.User!);
+        var userId = Context.Items["userId"] as string ?? "";
 
         FlipCardResult result;
 
@@ -184,9 +173,9 @@ public sealed class MemoryHub(
         if (!result.IsFinished)
             return;
 
-        // El resultado lo guarda el backend (contrato 04), junto con el aviso
-        // pendiente para Matchmaking. Si la BD falla, ResultRetryWorker lo
-        // vuelve a intentar mientras la partida siga en memoria.
+        // El resultado lo guarda el backend (contrato 04). Si la BD falla,
+        // ResultRetryWorker lo vuelve a intentar mientras la partida siga en
+        // memoria. El aviso de fin de partida al Shell lo da el microfrontend.
         try
         {
             await recorder.RecordAsync(session);

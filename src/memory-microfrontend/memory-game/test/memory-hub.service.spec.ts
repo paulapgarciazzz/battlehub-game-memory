@@ -75,12 +75,9 @@ describe('MemoryHubService', () => {
     mocks.mockBuilder.build.mockClear();
   });
 
-  it('requires configured token providers for competitive play', async () => {
+  it('requires a connection before joining or flipping cards', async () => {
     const {service} = setup();
-    await expect(service.connect()).rejects.toThrow(
-      'Faltan los proveedores de tokens del Shell de BattleHub.'
-    );
-    await expect(service.joinMatch('m1')).rejects.toThrow(
+    await expect(service.joinMatch('m1', 'u1', 'Ana')).rejects.toThrow(
       'Memory no está conectado al modo competitivo.'
     );
     await expect(service.joinLocalMatch('m1', 'u1', 'Ana')).rejects.toThrow(
@@ -91,17 +88,16 @@ describe('MemoryHubService', () => {
     );
   });
 
-  it('connects competitively, publishes hub events and joins with the room token', async () => {
+  it('connects competitively without tokens, publishes hub events and joins with the Shell user', async () => {
     const {service, events} = setup();
     const published = jest.fn();
     events.subscribe(MemoryHubEvents.PlayerJoined, published);
-    service.configure(async () => 'player-token', async () => 'room-token');
+    service.configure();
 
     await service.connect();
 
     expect(mocks.mockBuilder.withUrl).toHaveBeenCalledWith(
-      'http://localhost:5095/hubs/memory',
-      expect.objectContaining({accessTokenFactory: expect.any(Function)})
+      'http://localhost:5095/hubs/memory'
     );
     expect(mocks.mockConnection.on).toHaveBeenCalledTimes(8);
 
@@ -114,11 +110,12 @@ describe('MemoryHubService', () => {
       MemoryHubEvents.PlayerJoined
     );
 
-    await service.joinMatch('m1');
+    await service.joinMatch('m1', 'u1', 'Ana');
     expect(mocks.mockConnection.invoke).toHaveBeenCalledWith(
       'JoinMatch',
       'm1',
-      'room-token'
+      'u1',
+      'Ana'
     );
     await service.flipCard('m1', 4);
     expect(mocks.mockConnection.invoke).toHaveBeenCalledWith('FlipCard', 'm1', 4);
@@ -127,14 +124,13 @@ describe('MemoryHubService', () => {
     expect(mocks.mockBuilder.build).toHaveBeenCalledTimes(1);
   });
 
-  it('connects locally, rejoins after reconnect and clears credentials on disconnect', async () => {
+  it('connects locally, rejoins after reconnect and clears the player on disconnect', async () => {
     const {service} = setup();
     service.configureLocal();
 
     await service.connect();
     expect(mocks.mockBuilder.withUrl).toHaveBeenCalledWith(
-      'http://localhost:5095/hubs/memory-local',
-      {}
+      'http://localhost:5095/hubs/memory-local'
     );
 
     await service.joinLocalMatch('room', 'u1', 'Ana');
@@ -159,21 +155,21 @@ describe('MemoryHubService', () => {
     await expect(service.joinLocalMatch('room', 'u1', 'Ana')).rejects.toThrow(
       'Memory no está conectado al modo local.'
     );
-    service.clearCredentials();
+    service.clearPlayer();
   });
 
   it('publishes connection status and stops a connection when reconnecting fails', async () => {
     const {service, events} = setup();
     const published = jest.fn();
     events.subscribe(MemoryHubEvents.ConnectionClosed, published);
-    service.configure(async () => 'player-token', async () => 'room-token');
+    service.configure();
     await service.connect();
 
     const reconnecting = mocks.mockConnection.onreconnecting.mock.calls[0][0] as () => void;
     reconnecting();
     expect(published).toHaveBeenCalledWith(null, MemoryHubEvents.ConnectionClosed);
 
-    await service.joinMatch('m1');
+    await service.joinMatch('m1', 'u1', 'Ana');
     mocks.mockConnection.invoke.mockRejectedValueOnce(new Error('join failed'));
     const reconnected = mocks.mockConnection.onreconnected.mock.calls[0][0] as () => Promise<void>;
     await reconnected();
@@ -186,7 +182,7 @@ describe('MemoryHubService', () => {
 
   it('stops and rethrows when the initial connection fails', async () => {
     const {service} = setup();
-    service.configure(async () => 'player-token', async () => 'room-token');
+    service.configure();
     mocks.mockConnection.start.mockRejectedValueOnce(new Error('offline'));
 
     await expect(service.connect()).rejects.toThrow('offline');

@@ -15,8 +15,8 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
     {
         var players = new[]
         {
-            new Player("auth0|one", "Uno"),
-            new Player("auth0|two", "Dos")
+            new Player("user-one", "Uno"),
+            new Player("user-two", "Dos")
         };
         var session = new GameSession(
             matchId,
@@ -35,16 +35,8 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
         }
     }
 
-    private HttpClient CreateClient(string userId)
-    {
-        var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new("Bearer", factory.Token(userId));
-        return client;
-    }
-
     [Fact]
-    public async Task GetResultReturnsNotFoundForMissingAndForbidsNonParticipants()
+    public async Task GetResultReturnsNotFoundForMissingAndTheSavedResult()
     {
         var matchId = "result-" + Guid.NewGuid().ToString("N");
         var session = CreateSession(matchId);
@@ -57,25 +49,20 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
                 .SaveResultAsync(session, session.StartedAt);
         }
 
-        using var intruder = CreateClient("auth0|intruder");
+        using var player = factory.CreateClient();
         Assert.Equal(
             HttpStatusCode.NotFound,
-            (await intruder.GetAsync("/api/games/memory/results/missing-" + matchId)).StatusCode);
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            (await intruder.GetAsync("/api/games/memory/results/" + matchId)).StatusCode);
+            (await player.GetAsync("/api/games/memory/results/missing-" + matchId)).StatusCode);
 
-        using var player = CreateClient("auth0|one");
         var response = await player.GetAsync("/api/games/memory/results/" + matchId);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(matchId, await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
-    public async Task SaveResultValidatesMembershipCompletionAndExistingResults()
+    public async Task SaveResultValidatesCompletionAndExistingResults()
     {
-        using var player = CreateClient("auth0|one");
-        using var intruder = CreateClient("auth0|intruder");
+        using var player = factory.CreateClient();
 
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -91,17 +78,12 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
         var games = factory.Services.GetRequiredService<MemoryGameService>();
         var unfinishedId = "unfinished-" + Guid.NewGuid().ToString("N");
         games.CreateSession(unfinishedId, [
-            new Player("auth0|one", "Uno"),
-            new Player("auth0|two", "Dos")
+            new Player("user-one", "Uno"),
+            new Player("user-two", "Dos")
         ]);
         Assert.Equal(
             HttpStatusCode.BadRequest,
             (await player.PostAsJsonAsync(
-                "/api/games/memory/results",
-                new {matchId = unfinishedId})).StatusCode);
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            (await intruder.PostAsJsonAsync(
                 "/api/games/memory/results",
                 new {matchId = unfinishedId})).StatusCode);
 
@@ -126,10 +108,5 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
             new {matchId});
         Assert.Equal(HttpStatusCode.OK, alreadySaved.StatusCode);
         Assert.Contains("ya estaba guardado", await alreadySaved.Content.ReadAsStringAsync());
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            (await intruder.PostAsJsonAsync(
-                "/api/games/memory/results",
-                new {matchId})).StatusCode);
     }
 }

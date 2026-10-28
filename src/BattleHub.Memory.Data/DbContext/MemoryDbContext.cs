@@ -14,22 +14,9 @@ public class MemoryDbContext : Microsoft.EntityFrameworkCore.DbContext
 
     public DbSet<MemoryGameResultPlayer> GameResultPlayers => Set<MemoryGameResultPlayer>();
 
-    public DbSet<FinishNotification> FinishNotifications => Set<FinishNotification>();
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<FinishNotification>()
-        .HasKey(p => p.Id);
-
-        modelBuilder.Entity<FinishNotification>()
-            .Property(p => p.MatchId)
-            .HasMaxLength(64)
-            .IsRequired();
-
-        modelBuilder.Entity<FinishNotification>()
-            .HasIndex(p => p.MatchId)
-            .IsUnique();
 
         modelBuilder.Entity<MemoryGameResultPlayer>()
             .HasOne(p => p.GameResult)

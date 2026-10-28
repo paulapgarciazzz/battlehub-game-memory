@@ -18,7 +18,7 @@ public sealed class MigrationOperationsTests
             .OrderBy(type => type.Name)
             .ToArray();
 
-        Assert.Equal(6, migrations.Length);
+        Assert.Equal(7, migrations.Length);
 
         foreach (var migrationType in migrations)
         {
