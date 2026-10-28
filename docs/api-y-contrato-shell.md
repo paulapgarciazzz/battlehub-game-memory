@@ -4,7 +4,7 @@
 
 Este documento describe los endpoints REST, la comunicación en tiempo real mediante SignalR y el contrato de integración entre el microfrontend Memory y el Shell de BattleHub.
 
-Incluye ejemplos ejecutables con `curl`, parámetros, encabezados, cuerpos de solicitud, respuestas esperadas y códigos HTTP. Los ejemplos utilizan datos ficticios y no incluyen credenciales, tokens ni secretos reales.
+Incluye ejemplos ejecutables con `curl`, parámetros, encabezados, cuerpos de solicitud, respuestas esperadas y códigos HTTP. Los ejemplos utilizan datos ficticios. El juego no tiene contacto con Auth0: la API y el hub no piden token.
 
 ## 2. Configuración general
 
@@ -21,15 +21,13 @@ Incluye ejemplos ejecutables con `curl`, parámetros, encabezados, cuerpos de so
 | Microfrontend Memory                | `http://localhost:4003`                   |
 | Remote Entry de Module Federation   | `http://localhost:4003/remoteEntry.js`    |
 
-El hub `/hubs/memory-local` y el documento OpenAPI se habilitan únicamente cuando la API se ejecuta en el entorno de desarrollo. El hub local no utiliza Auth0 ni Matchmaking y no debe exponerse en producción.
+El hub `/hubs/memory-local` y el documento OpenAPI se habilitan únicamente cuando la API se ejecuta en el entorno de desarrollo. El hub local no guarda resultados y no debe exponerse en producción.
 
 ### Requisitos
 
 - Backend de Memory ejecutándose en el puerto 5095.
 - Base de datos SQL Server configurada y accesible.
-- Configuración válida de Auth0.
-- Un token de acceso de usuario válido para la audiencia de Memory para los endpoints protegidos.
-- Para jugar una partida competitiva, una sala válida de Matchmaking con dos participantes.
+- Para jugar una partida competitiva, el Shell entrega el `matchId` de la sala y el `currentUser`.
 
 Los ejemplos siguientes utilizan la sintaxis de Bash, compatible con Git Bash y WSL. Se puede sustituir la dirección base si la API se ejecuta en otro entorno.
 
@@ -37,40 +35,19 @@ Los ejemplos siguientes utilizan la sintaxis de Bash, compatible con Git Bash y 
 
 ```bash
 export API_URL="http://localhost:5095"
-export MEMORY_TOKEN="REEMPLAZAR_POR_UN_TOKEN_VALIDO_DE_PRUEBA"
 export USER_ID="auth0|usuario-de-prueba"
 export MATCH_ID="MEMORY-TEST-001"
 ```
 
-`MEMORY_TOKEN` y `USER_ID` son marcadores de posición. Deben reemplazarse localmente por valores reales de prueba y nunca publicarse en el repositorio.
+`USER_ID` y `MATCH_ID` son valores de ejemplo. Deben reemplazarse por los de una partida real.
 
-## 3. Autenticación y autorización
+## 3. Identidad del jugador
 
-La API utiliza Auth0 y tokens JWT firmados con RS256.
+Según los requisitos de BattleHub, **ningún juego tiene contacto con Auth0**. El Shell inicia sesión, consulta al Profile Service qué juegos puede ver el usuario y le entrega al juego el `matchId` y el `currentUser` (`id` y `displayName`).
 
-El backend valida la firma, el emisor, la audiencia y la vigencia del token. El identificador del usuario se obtiene de la propiedad `sub` del JWT; no se confía en un identificador de usuario enviado por el cliente para determinar la identidad autenticada.
-
-### Token de usuario
-
-Los endpoints protegidos reciben el encabezado:
-
-```
-Authorization: Bearer <token>
-```
-
-El token de usuario debe corresponder a la audiencia configurada para Memory. Un token de otra audiencia no es intercambiable con este token.
-
-### Políticas de autorización
-
-| Política      | Uso                                                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `MemoryPlay`  | Permite a un usuario autenticado jugar, conectarse al hub competitivo, consultar su historial y consultar sus estadísticas. |
-| `MemoryRead`  | Define permisos de lectura para usuarios y servicios autorizados.                                                           |
-| `MemoryWrite` | Define permisos de escritura para clientes máquina a máquina con el permiso `games.memory.results.write`.                   |
-
-Los endpoints documentados en este archivo están protegidos por `MemoryPlay`, excepto `/health`. Por lo tanto, no deben invocarse con un token máquina a máquina como si fuera un usuario.
-
-Además, un jugador solamente puede consultar su propio historial y sus propias estadísticas. La consulta de un resultado individual también verifica que el usuario autenticado haya participado en esa partida.
+- La API REST y el hub `/hubs/memory` no piden token ni encabezado `Authorization`.
+- El jugador es el `currentUser.id` que entrega el Shell; el hub lo recibe en `JoinMatch`.
+- El juego no llama a Matchmaking. Al terminar la partida avisa al Shell con un evento (sección 5.5) y el Shell avisa a Matchmaking.
 
 ### Códigos HTTP generales
 
@@ -78,8 +55,6 @@ Además, un jugador solamente puede consultar su propio historial y sus propias 
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | `200 OK`                    | Solicitud procesada correctamente.                                                       |
 | `400 Bad Request`           | Los datos enviados no cumplen las condiciones de la operación.                           |
-| `401 Unauthorized`          | No se proporcionó un token válido o la autenticación falló.                              |
-| `403 Forbidden`             | El usuario autenticado no tiene permiso para realizar la operación o acceder al recurso. |
 | `404 Not Found`             | No se encontró la partida o el resultado solicitado.                                     |
 | `500 Internal Server Error` | Error interno no controlado.                                                             |
 
@@ -87,14 +62,14 @@ Los códigos exactos de errores internos pueden variar según la causa y el mane
 
 ### Resumen de endpoints
 
-| #   | Método | Ruta                                         | Autenticación                  |
-| --- | ------ | -------------------------------------------- | ------------------------------ |
-| 4.1 | `GET`  | `/health`                                    | No requerida                   |
-| 4.2 | `GET`  | `/api/games/memory/players/{userId}/history` | `MemoryPlay`                   |
-| 4.3 | `GET`  | `/api/games/memory/players/{userId}/stats`   | `MemoryPlay`                   |
-| 4.4 | `POST` | `/api/games/memory/results`                  | `MemoryPlay`                   |
-| 4.5 | `GET`  | `/api/games/memory/results/{matchId}`        | `MemoryPlay`                   |
-| 8   | `GET`  | `/openapi/v1.json`                           | No requerida (solo desarrollo) |
+| #   | Método | Ruta                                         | Disponibilidad  |
+| --- | ------ | -------------------------------------------- | --------------- |
+| 4.1 | `GET`  | `/health`                                    | Siempre         |
+| 4.2 | `GET`  | `/api/games/memory/players/{userId}/history` | Siempre         |
+| 4.3 | `GET`  | `/api/games/memory/players/{userId}/stats`   | Siempre         |
+| 4.4 | `POST` | `/api/games/memory/results`                  | Siempre         |
+| 4.5 | `GET`  | `/api/games/memory/results/{matchId}`        | Siempre         |
+| 8   | `GET`  | `/openapi/v1.json`                           | Solo desarrollo |
 
 ## 4. Endpoints REST
 
@@ -136,34 +111,30 @@ Healthy
 
 - **Método:** `GET`
 - **Ruta:** `/api/games/memory/players/{userId}/history`
-- **Autenticación:** Requerida mediante `MemoryPlay`.
+- **Autenticación:** no requerida.
 - **Cuerpo de la solicitud:** no aplica.
-
-El parámetro `userId` debe coincidir con el identificador `sub` del usuario autenticado. Si no coincide, la API devuelve `403 Forbidden`.
 
 #### Parámetros
 
 | Parámetro | Ubicación | Tipo   | Obligatorio | Descripción                                               |
 | --------- | --------- | ------ | ----------- | --------------------------------------------------------- |
-| `userId`  | Ruta      | string | Sí          | Identificador del usuario autenticado, obtenido de Auth0. |
+| `userId`  | Ruta      | string | Sí          | Identificador del usuario (`currentUser.id` del Shell).   |
 
 #### Encabezados
 
 | Encabezado      | Valor              | Obligatorio |
 | --------------- | ------------------ | ----------- |
-| `Authorization` | `Bearer <token>`   | Sí          |
 | `Accept`        | `application/json` | Recomendado |
 
 #### Ejemplo curl
 
 ```bash
 curl -i \
-  -H "Authorization: Bearer $MEMORY_TOKEN" \
   -H "Accept: application/json" \
   "$API_URL/api/games/memory/players/$USER_ID/history"
 ```
 
-El valor de `USER_ID` es ilustrativo. Debe sustituirse por el identificador real del usuario asociado al token de prueba.
+El valor de `USER_ID` es ilustrativo. Debe sustituirse por el identificador real del usuario.
 
 #### Respuesta esperada
 
@@ -190,36 +161,30 @@ Los valores son ficticios y representan la estructura del DTO. Las fechas, el ga
 #### Códigos HTTP
 
 - `200 OK`: historial consultado correctamente.
-- `401 Unauthorized`: token ausente, inválido o vencido.
-- `403 Forbidden`: el `userId` solicitado no coincide con el usuario autenticado.
 
 ### 4.3. Consultar estadísticas de un jugador
 
 - **Método:** `GET`
 - **Ruta:** `/api/games/memory/players/{userId}/stats`
-- **Autenticación:** Requerida mediante `MemoryPlay`.
+- **Autenticación:** no requerida.
 - **Cuerpo de la solicitud:** no aplica.
-
-El jugador solamente puede consultar sus propias estadísticas.
 
 #### Parámetros
 
 | Parámetro | Ubicación | Tipo   | Obligatorio | Descripción                            |
 | --------- | --------- | ------ | ----------- | -------------------------------------- |
-| `userId`  | Ruta      | string | Sí          | Identificador del usuario autenticado. |
+| `userId`  | Ruta      | string | Sí          | Identificador del usuario.             |
 
 #### Encabezados
 
 | Encabezado      | Valor              | Obligatorio |
 | --------------- | ------------------ | ----------- |
-| `Authorization` | `Bearer <token>`   | Sí          |
 | `Accept`        | `application/json` | Recomendado |
 
 #### Ejemplo curl
 
 ```bash
 curl -i \
-  -H "Authorization: Bearer $MEMORY_TOKEN" \
   -H "Accept: application/json" \
   "$API_URL/api/games/memory/players/$USER_ID/stats"
 ```
@@ -257,14 +222,12 @@ Los números son ejemplos ilustrativos. La API calcula las estadísticas a parti
 #### Códigos HTTP
 
 - `200 OK`: estadísticas consultadas correctamente.
-- `401 Unauthorized`: token ausente o inválido.
-- `403 Forbidden`: el identificador solicitado pertenece a otro usuario.
 
 ### 4.4. Guardar o confirmar el resultado de una partida
 
 - **Método:** `POST`
 - **Ruta:** `/api/games/memory/results`
-- **Autenticación:** Requerida mediante `MemoryPlay`.
+- **Autenticación:** no requerida.
 - **Parámetros de ruta y de consulta:** ninguno.
 
 Este endpoint registra el resultado de una partida finalizada. Normalmente, el backend lo guarda automáticamente cuando la partida termina a través de SignalR. El endpoint permite volver a solicitar el guardado de forma idempotente, sin duplicar el resultado.
@@ -275,7 +238,6 @@ El cliente no determina el ganador ni envía los puntajes de los jugadores. El s
 
 | Encabezado      | Valor              | Obligatorio |
 | --------------- | ------------------ | ----------- |
-| `Authorization` | `Bearer <token>`   | Sí          |
 | `Content-Type`  | `application/json` | Sí          |
 | `Accept`        | `application/json` | Recomendado |
 
@@ -296,14 +258,11 @@ El cliente no determina el ganador ni envía los puntajes de los jugadores. El s
 ```bash
 curl -i \
   -X POST \
-  -H "Authorization: Bearer $MEMORY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{"matchId":"MEMORY-TEST-001"}' \
   "$API_URL/api/games/memory/results"
 ```
-
-El identificador debe corresponder a una partida en la que haya participado el usuario autenticado.
 
 #### Respuesta esperada
 
@@ -333,8 +292,6 @@ Si el resultado ya estaba guardado y la sesión ya no está en memoria, la API p
 
 - `200 OK`: resultado guardado o confirmado.
 - `400 Bad Request`: `matchId` vacío o la partida todavía no ha terminado.
-- `401 Unauthorized`: token ausente o inválido.
-- `403 Forbidden`: el usuario no participó en la partida.
 - `404 Not Found`: no existe una sesión ni un resultado almacenado para el `matchId`.
 
 > Importante: un `200 OK` indica que el resultado fue guardado o que ya existía. Si el guardado automático falla durante la finalización de la partida, el backend dispone de un mecanismo de reintento y emite `ResultSaveFailed` mientras el resultado no se confirme.
@@ -343,10 +300,10 @@ Si el resultado ya estaba guardado y la sesión ya no está en memoria, la API p
 
 - **Método:** `GET`
 - **Ruta:** `/api/games/memory/results/{matchId}`
-- **Autenticación:** Requerida mediante `MemoryPlay`.
+- **Autenticación:** no requerida.
 - **Cuerpo de la solicitud:** no aplica.
 
-Este endpoint devuelve el resultado almacenado. Solo los participantes de la partida pueden consultarlo.
+Este endpoint devuelve el resultado almacenado.
 
 #### Parámetros
 
@@ -358,14 +315,12 @@ Este endpoint devuelve el resultado almacenado. Solo los participantes de la par
 
 | Encabezado      | Valor              | Obligatorio |
 | --------------- | ------------------ | ----------- |
-| `Authorization` | `Bearer <token>`   | Sí          |
 | `Accept`        | `application/json` | Recomendado |
 
 #### Ejemplo curl
 
 ```bash
 curl -i \
-  -H "Authorization: Bearer $MEMORY_TOKEN" \
   -H "Accept: application/json" \
   "$API_URL/api/games/memory/results/$MATCH_ID"
 ```
@@ -404,37 +359,20 @@ Los valores del ejemplo no representan una partida real.
 #### Códigos HTTP
 
 - `200 OK`: resultado consultado correctamente.
-- `401 Unauthorized`: token ausente o inválido.
-- `403 Forbidden`: el usuario autenticado no participó en la partida.
 - `404 Not Found`: no existe un resultado almacenado para el `matchId`.
 
 ### 4.6. Ejemplos de respuestas de error
 
 Los siguientes ejemplos muestran cómo se ve un error al ejecutar los `curl` anteriores.
 
-**401 Unauthorized** (token ausente, inválido o vencido):
+**404 Not Found** (no existe un resultado para el `matchId`):
 
 ```bash
-curl -i "$API_URL/api/games/memory/players/$USER_ID/history"
+curl -i "$API_URL/api/games/memory/results/no-existe"
 ```
 
 ```
-HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer
-```
-
-La respuesta no incluye cuerpo.
-
-**403 Forbidden** (consultar el historial de otro usuario):
-
-```bash
-curl -i \
-  -H "Authorization: Bearer $MEMORY_TOKEN" \
-  "$API_URL/api/games/memory/players/auth0|otro-usuario/history"
-```
-
-```
-HTTP/1.1 403 Forbidden
+HTTP/1.1 404 Not Found
 ```
 
 > Nota: el formato exacto del cuerpo de los errores `400` y `404` depende del controlador (puede ser vacío o un objeto `ProblemDetails` de ASP.NET Core). Confirmarlo ejecutando la llamada contra la API local.
@@ -443,9 +381,9 @@ HTTP/1.1 403 Forbidden
 
 ### 5.1. Responsabilidades
 
-El Shell es responsable de la autenticación del usuario, la selección o creación de la sala de Matchmaking y la carga del microfrontend.
+El Shell es responsable de la autenticación del usuario con Auth0, la selección o creación de la sala de Matchmaking, la carga del microfrontend y el aviso de fin de partida a Matchmaking.
 
-Memory es responsable de ejecutar la partida, validar las jugadas, sincronizar el estado de ambos jugadores y guardar el resultado.
+Memory es responsable de ejecutar la partida, validar las jugadas, sincronizar el estado de ambos jugadores, guardar el resultado y avisar al Shell cuando la partida termina. Memory no tiene contacto con Auth0 ni con Matchmaking.
 
 El juego no expone un endpoint propio para crear o buscar salas competitivas. El identificador de la partida proviene de Matchmaking a través del Shell.
 
@@ -467,18 +405,16 @@ El Shell carga el módulo y llama a su ciclo de vida en este orden:
 
 ### 5.3. Contexto que recibe Memory
 
-El contrato `GameContext` incluye los siguientes datos:
+El contrato `GameContext` es el del contrato 03 (sección 5), sin extensiones:
 
-| Campo                         | Tipo              | Descripción                                                       |
-| ----------------------------- | ----------------- | ----------------------------------------------------------------- |
-| `matchId`                     | string            | Identificador de la sala creada por Matchmaking.                  |
-| `gameType`                    | string            | Debe ser `"memory"`.                                              |
-| `currentUser.id`              | string            | Identificador del usuario; debe coincidir con el `sub` del token. |
-| `currentUser.displayName`     | string            | Nombre que se muestra en la partida.                              |
-| `getAccessToken()`            | función asíncrona | Obtiene el token del usuario para la audiencia de Memory.         |
-| `getMatchmakingAccessToken()` | función asíncrona | Obtiene el token delegado del usuario para consultar Matchmaking. |
+| Campo                     | Tipo   | Descripción                                      |
+| ------------------------- | ------ | ------------------------------------------------ |
+| `matchId`                 | string | Identificador de la sala creada por Matchmaking. |
+| `gameType`                | string | Debe ser `"memory"`.                             |
+| `currentUser.id`          | string | Identificador del usuario que entrega el Shell.  |
+| `currentUser.displayName` | string | Nombre que se muestra en la partida.             |
 
-Ejemplo conceptual del contexto:
+Ejemplo del contexto:
 
 ```ts
 const context = {
@@ -488,44 +424,67 @@ const context = {
     id: "auth0|usuario-de-prueba",
     displayName: "Jugador Uno",
   },
-  getAccessToken: async () => {
-    // El Shell obtiene un token válido para la audiencia de Memory.
-  },
-  getMatchmakingAccessToken: async () => {
-    // El Shell obtiene un token válido para la audiencia de Matchmaking.
-  },
 };
 ```
 
-Este fragmento ilustra la estructura del contrato. No es una implementación completa de las funciones de autenticación.
+`initialize()` valida que el contexto contenga el tipo de juego `memory`, el identificador de partida y los datos del usuario. Si faltan datos obligatorios, la inicialización falla.
 
-`initialize()` valida que el contexto contenga el tipo de juego, el identificador de partida, los datos del usuario y ambas funciones de tokens. Si faltan datos obligatorios, la inicialización falla.
+### 5.4. Entrada a la partida
 
-### 5.4. Validación de la sala
+Al ejecutar `start()`, el microfrontend invoca `JoinMatch(matchId, userId, displayName)` en el hub competitivo con los datos del contexto.
 
-Al ejecutar `start()`, el microfrontend invoca el método `JoinMatch` del hub competitivo.
+- Los dos primeros jugadores distintos que entran con el mismo `matchId` forman la partida.
+- Un tercer jugador no puede entrar a una partida que ya tiene a sus dos jugadores.
+- Un jugador de la partida puede volver a entrar (por ejemplo, al recargar) y recibe el estado actual.
 
-El backend utiliza el token de usuario de Memory para identificar al jugador y el token delegado de Matchmaking para consultar la sala. La API valida que:
+Memory no consulta a Matchmaking: el Shell solo abre el juego cuando la sala ya está lista.
 
-- La sala exista.
-- El tipo de juego sea `memory`.
-- La sala esté iniciada y tenga dos participantes.
-- El usuario autenticado forme parte de la sala.
-- Los participantes correspondan al grupo de jugadores con el que se creó la sesión.
+### 5.5. Evento de fin de partida
 
-El nombre mostrado se obtiene del registro de participantes de Matchmaking. El identificador enviado por el Shell no sustituye la validación de identidad del JWT.
+Cuando la partida termina, el elemento `memory-game-module` emite un evento DOM:
+
+| Propiedad  | Valor                                             |
+| ---------- | ------------------------------------------------- |
+| Nombre     | `battlehub:game-finished`                         |
+| Tipo       | `CustomEvent`                                     |
+| `bubbles`  | `true` (se puede escuchar en el área o en window) |
+| `composed` | `true`                                            |
+
+Contenido de `event.detail`:
+
+```json
+{
+  "matchId": "MEMORY-TEST-001",
+  "gameType": "memory",
+  "isDraw": false,
+  "winnerUserId": "auth0|usuario-de-prueba",
+  "players": [
+    { "userId": "auth0|usuario-de-prueba", "displayName": "Jugador Uno", "score": 5 },
+    { "userId": "auth0|segundo-usuario", "displayName": "Jugador Dos", "score": 3 }
+  ]
+}
+```
+
+- Se emite una sola vez por partida, en la pantalla de cada uno de los dos jugadores. El aviso del Shell a Matchmaking debe tolerar que llegue dos veces.
+- `winnerUserId` es `null` cuando hay empate.
+- Solo se emite dentro del Shell. El modo local, solo y práctica no lo emiten.
+
+Ejemplo de cómo lo escucha el Shell:
+
+```ts
+window.addEventListener("battlehub:game-finished", (event) => {
+  const { matchId } = (event as CustomEvent).detail;
+  // El Shell avisa a Matchmaking que la partida terminó.
+});
+```
 
 ## 6. Contrato de SignalR
 
-### 6.1. Dirección y autenticación
+### 6.1. Dirección
 
 - **Hub competitivo:** `http://localhost:5095/hubs/memory`
 
-La conexión se realiza mediante SignalR. Para la conexión competitiva se requiere un token de usuario válido de Auth0 para Memory.
-
-En el transporte WebSocket, SignalR transmite el token mediante el parámetro `access_token` de la URL porque el navegador no puede agregar libremente el encabezado `Authorization` al establecimiento de WebSocket.
-
-Los tokens deben tratarse como secretos y nunca registrarse ni compartirse en capturas o URLs públicas.
+La conexión se realiza mediante SignalR y no requiere token.
 
 #### Ejemplo de conexión (cliente `@microsoft/signalr`)
 
@@ -533,9 +492,7 @@ Los tokens deben tratarse como secretos y nunca registrarse ni compartirse en ca
 import * as signalR from "@microsoft/signalr";
 
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl("http://localhost:5095/hubs/memory", {
-    accessTokenFactory: () => context.getAccessToken(),
-  })
+  .withUrl("http://localhost:5095/hubs/memory")
   .withAutomaticReconnect()
   .build();
 
@@ -550,23 +507,25 @@ connection.on("ResultSaved", (payload) => {
 });
 
 await connection.start();
-
-const matchmakingToken = await context.getMatchmakingAccessToken();
-await connection.invoke("JoinMatch", context.matchId, matchmakingToken);
+await connection.invoke(
+  "JoinMatch",
+  context.matchId,
+  context.currentUser.id,
+  context.currentUser.displayName,
+);
 ```
-
-El fragmento es ilustrativo: el token se obtiene del `GameContext` entregado por el Shell y nunca se escribe en el código.
 
 ### 6.2. Métodos del cliente
 
-#### `JoinMatch(matchId, matchmakingAccessToken)`
+#### `JoinMatch(matchId, userId, displayName)`
 
-Une al jugador autenticado a una partida existente.
+Une al jugador a una partida.
 
-| Parámetro                | Tipo   | Descripción                                                   |
-| ------------------------ | ------ | ------------------------------------------------------------- |
-| `matchId`                | string | Identificador de la sala de Matchmaking.                      |
-| `matchmakingAccessToken` | string | Token delegado utilizado por el backend para validar la sala. |
+| Parámetro     | Tipo   | Descripción                                     |
+| ------------- | ------ | ----------------------------------------------- |
+| `matchId`     | string | Identificador de la sala de Matchmaking.        |
+| `userId`      | string | `currentUser.id` que entrega el Shell.          |
+| `displayName` | string | `currentUser.displayName` que entrega el Shell. |
 
 Este método se utiliza tanto para incorporarse a la partida como para recuperar el estado después de una reconexión. Si la sesión ya existe, el jugador recibe un `StateSnapshot` con el estado actual.
 
@@ -579,9 +538,7 @@ Solicita voltear una carta.
 | `matchId` | string | Identificador de la partida a la que se unió esta conexión. |
 | `cardId`  | int    | Identificador de la carta.                                  |
 
-El servidor comprueba que la conexión se haya unido a esa partida, que la previsualización haya terminado y que la jugada sea válida para el turno actual.
-
-El cliente no envía un `userId` para decidir quién realiza la jugada. La identidad procede del token autenticado.
+El servidor comprueba que la conexión se haya unido a esa partida, que la previsualización haya terminado y que la jugada sea válida para el turno actual. El jugador que voltea es el que se unió con esta conexión.
 
 Ejemplo:
 
@@ -676,7 +633,8 @@ Algunos errores definidos por el hub competitivo son:
 | `JOIN_REQUIRED`        | La conexión no se ha unido a la partida indicada.                               |
 | `MATCH_NOT_FOUND`      | No existe una sesión activa correspondiente a la partida.                       |
 | `PREVIEW_ACTIVE`       | Todavía se está mostrando la previsualización de las cartas.                    |
-| `MATCH_ROSTER_CHANGED` | Los participantes actuales no coinciden con los registrados al crear la sesión. |
+| `INVALID_JOIN`         | Falta el `matchId`, el `userId` o el `displayName`, o son demasiado largos.     |
+| `PLAYER_NOT_IN_MATCH`  | La partida ya tiene a sus dos jugadores y este usuario no es uno de ellos.      |
 
 También pueden rechazarse jugadas por turno incorrecto, carta inexistente o carta ya volteada. En estos casos el servidor comunica el error de la operación mediante una excepción de SignalR.
 
@@ -686,31 +644,19 @@ También pueden rechazarse jugadas por turno incorrecto, carta inexistente o car
 2. El Shell obtiene o crea una sala de Matchmaking.
 3. El Shell carga el módulo `memoryGame`.
 4. El Shell entrega el `GameContext` a `initialize()`.
-5. `start()` establece la conexión con `/hubs/memory` y ejecuta `JoinMatch`.
-6. El backend valida la sala y los participantes mediante Matchmaking.
-7. Cuando los dos jugadores están conectados, el servidor envía `GameReady`.
-8. Al finalizar la previsualización, envía `PreviewFinished` y comienza el turno.
-9. Los jugadores invocan `FlipCard`; el servidor valida cada jugada y comunica el resultado mediante `CardFlipped`.
-10. Cuando la partida termina, el backend guarda el resultado e intenta completar el flujo de finalización de Matchmaking.
-11. El hub emite `ResultSaved` si confirma el guardado, o `ResultSaveFailed` si el intento falla.
-12. Los jugadores pueden consultar el resultado guardado mediante `GET /api/games/memory/results/{matchId}`.
+5. `start()` establece la conexión con `/hubs/memory` y ejecuta `JoinMatch` con el `currentUser`.
+6. Cuando los dos jugadores están conectados, el servidor envía `GameReady`.
+7. Al finalizar la previsualización, envía `PreviewFinished` y comienza el turno.
+8. Los jugadores invocan `FlipCard`; el servidor valida cada jugada y comunica el resultado mediante `CardFlipped`.
+9. Cuando la partida termina, el backend guarda el resultado y el hub emite `ResultSaved`, o `ResultSaveFailed` si el intento falla (el backend reintenta).
+10. El microfrontend emite `battlehub:game-finished` y el Shell avisa a Matchmaking.
+11. Los jugadores pueden consultar el resultado guardado mediante `GET /api/games/memory/results/{matchId}`.
 
 El cliente debe considerar al servidor como la fuente autoritativa del estado, del turno, del resultado y de la confirmación del guardado.
 
-## 7. Integración con Matchmaking
+## 7. Matchmaking
 
-Memory consulta el servicio de Matchmaking para validar la sala. La creación de salas y el flujo de búsqueda de partidas pertenecen al Shell y a Matchmaking, no a la API REST de Memory.
-
-Según el contrato de integración, el backend de Memory utiliza estas operaciones externas de Matchmaking:
-
-| Método | Ruta externa               | Finalidad                                                             |
-| ------ | -------------------------- | --------------------------------------------------------------------- |
-| `GET`  | `/api/matches/{id}`        | Consultar y validar la sala, su tipo, estado y participantes.         |
-| `POST` | `/api/matches/{id}/finish` | Solicitar que Matchmaking finalice la sala cuando termina la partida. |
-
-Estas son llamadas del backend de Memory hacia Matchmaking; no son endpoints REST implementados por este repositorio.
-
-La llamada de finalización utiliza credenciales de servicio y el permiso correspondiente. El backend mantiene un mecanismo de reintento para el aviso de finalización, por lo que el cliente no debe intentar cerrar Matchmaking directamente.
+Memory no se comunica con Matchmaking. El Shell crea o elige la sala, abre el juego con su `matchId` y, cuando recibe `battlehub:game-finished`, avisa a Matchmaking que la partida terminó.
 
 ## 8. OpenAPI durante desarrollo
 
@@ -732,40 +678,35 @@ Esta ruta está disponible solamente cuando la aplicación se ejecuta en el ento
 
 ## 9. Buenas prácticas de seguridad
 
-- No incluir tokens de Auth0, secretos de clientes, contraseñas ni credenciales reales en los ejemplos o en el repositorio.
-- No confiar en un `userId` enviado por el navegador para autenticar al jugador.
-- Utilizar la audiencia correcta para cada token: Memory para la API y el hub del juego; Matchmaking para la consulta delegada de la sala.
-- No permitir que un usuario consulte el historial, las estadísticas o los resultados de otros jugadores.
-- No considerar una partida guardada hasta recibir la confirmación correspondiente.
+- No incluir secretos ni contraseñas reales en los ejemplos o en el repositorio.
+- Como el juego no usa Auth0, la API confía en el `userId` que entrega el Shell. No exponer la API fuera de la red de BattleHub.
+- No considerar una partida guardada hasta recibir `ResultSaved`.
 - No exponer `/hubs/memory-local` fuera del entorno de desarrollo.
 - Configurar HTTPS, CORS y las direcciones reales de los servicios antes de desplegar.
-- Mantener los secretos de servicio en mecanismos seguros de configuración y nunca en el código del microfrontend.
 
 ## 10. Referencias de implementación
 
 La documentación se basa en los siguientes archivos del repositorio:
 
 - `src/BattleHub.Memory.Api/Program.cs`: configuración de la API, OpenAPI, CORS y hubs.
-- `src/BattleHub.Memory.Api/Auth/MemoryAuth.cs`: validación JWT y políticas de autorización.
 - `src/BattleHub.Memory.Api/Controllers/MemoryController.cs`: historial y estadísticas.
 - `src/BattleHub.Memory.Api/Controllers/MemoryGameResultsController.cs`: guardado y consulta de resultados.
 - `src/BattleHub.Memory.Api/Hubs/MemoryHub.cs`: comunicación competitiva mediante SignalR.
 - `src/BattleHub.Memory.Api/Hubs/MemoryLocalHub.cs`: juego local exclusivo para desarrollo.
 - `src/memory-microfrontend/memory-game/src/game-module.ts`: ciclo de vida e integración con el Shell.
 - `src/memory-microfrontend/memory-game/src/game-contracts.ts`: contrato de integración del microfrontend.
-- `docs/integracion-shell-auth0.md`: detalles adicionales de integración con Auth0 y Matchmaking.
 - `src/memory-microfrontend/memory-game/README.md`: configuración y ejecución del microfrontend.
 
 ## 11. Verificación de los ejemplos
 
-Los ejemplos `curl` deben probarse con la API en funcionamiento, una base de datos configurada y un token válido de prueba. Lista de verificación:
+Los ejemplos `curl` deben probarse con la API en funcionamiento y una base de datos configurada. Lista de verificación:
 
 - [ ] `GET /health` responde `200 OK`.
-- [ ] `GET .../history` con el usuario propio responde `200 OK`.
-- [ ] `GET .../history` con un `userId` ajeno responde `403 Forbidden`.
-- [ ] `GET .../stats` con el usuario propio responde `200 OK`.
+- [ ] `GET .../history` responde `200 OK`.
+- [ ] `GET .../stats` responde `200 OK`.
 - [ ] `POST /api/games/memory/results` con una partida terminada responde `200 OK`.
-- [ ] `GET .../results/{matchId}` con un participante responde `200 OK`; con un no participante, `403 Forbidden`.
+- [ ] `GET .../results/{matchId}` de una partida guardada responde `200 OK`; de una que no existe, `404 Not Found`.
 - [ ] SignalR: conexión, incorporación de dos jugadores, sincronización de cartas, errores de turno y confirmación del guardado.
+- [ ] El Shell recibe `battlehub:game-finished` al terminar la partida.
 
 Los ejemplos documentan el contrato esperado. Marcar cada casilla al ejecutarlo contra un entorno real.
