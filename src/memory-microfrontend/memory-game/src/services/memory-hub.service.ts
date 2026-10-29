@@ -65,15 +65,20 @@ export class MemoryHubService {
       throw new Error('Configurar la URL del hub de Memory.');
     }
 
+    if (this.localMode && !environment.localHubPort) {
+      throw new Error('Configurar el puerto del hub local de Memory.');
+    }
+
     if (this.connection) {
       await this.disconnect();
     }
 
-    // En local se usa el mismo equipo que sirve el frontend.
-    // Así también funciona al abrir la web mediante la IP LAN
-    // de la computadora que ejecuta el backend.
+    // En local se usa el mismo equipo que sirve el frontend, con el puerto
+    // de config/environment.json. Así también funciona al abrir la web
+    // mediante la IP LAN de la computadora que ejecuta el backend.
+    const {protocol, hostname} = window.location;
     const hubUrl = this.localMode
-      ? `http://${window.location.hostname}:5095/hubs/memory-local`
+      ? `${protocol}//${hostname}:${environment.localHubPort}/hubs/memory-local`
       : `${environment.hubBaseUrl}/hubs/memory`;
 
     const connection = new signalR.HubConnectionBuilder()

@@ -218,7 +218,7 @@ Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api
 | Clave                              | Para qué sirve                                                                                                  |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `ConnectionStrings:MemoryDatabase` | Cadena de conexión a SQL Server; en el desarrollo local puede utilizar LocalDB con la base `BattleHubMemoryDb`. |
-| `Cors:Origins`                     | Orígenes permitidos, incluidos el Shell y el microfrontend.                                                     |
+| `Cors:Origins`                     | Orígenes permitidos (Shell y microfrontend). Obligatorio: la API no arranca si está vacío.                      |
 | `Database:MigrateOnStartup`        | Indica si la API aplica las migraciones al arrancar. En Docker Compose está habilitado.                         |
 | `SampleData:Enabled`               | Indica si se cargan partidas de ejemplo al arrancar.                                                            |
 | `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo.                                           |
@@ -228,6 +228,7 @@ En la configuración de Docker Compose se utilizan variables de entorno de .NET 
 - `ConnectionStrings__MemoryDatabase`
 - `Database__MigrateOnStartup`
 - `SampleData__Enabled`
+- `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`.
 
 Los valores de conexión y credenciales dependen del entorno de ejecución.
 

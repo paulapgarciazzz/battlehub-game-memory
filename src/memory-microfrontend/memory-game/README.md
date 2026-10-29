@@ -67,5 +67,6 @@ npm start          # http://localhost:4003 (y http://localhost:4003/remoteEntry.
 
 ## Configuración
 
-`config/environment.json` define `apiBaseUrl` y `hubBaseUrl` (por defecto `http://localhost:5095`).
+`config/environment.json` define `apiBaseUrl` y `hubBaseUrl` (por defecto `http://localhost:5095`), y
+`localHubPort` (por defecto `5095`), el puerto del hub local que usa el modo playground.
 En producción se reemplaza por `config/environment.production.json`.

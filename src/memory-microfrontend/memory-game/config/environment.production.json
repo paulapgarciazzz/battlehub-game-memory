@@ -2,5 +2,6 @@
   "debug": false,
   "testing": false,
   "apiBaseUrl": "",
-  "hubBaseUrl": ""
+  "hubBaseUrl": "",
+  "localHubPort": 5095
 }

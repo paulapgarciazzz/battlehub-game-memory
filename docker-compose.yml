@@ -33,6 +33,9 @@ services:
       Database__MigrateOnStartup: "true"
       SampleData__Enabled: "true"
       ConnectionStrings__MemoryDatabase: "Server=sql,1433;Database=BattleHubMemoryDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
+      # Orígenes permitidos por CORS. Si no están en .env, se usan los locales.
+      Cors__Origins__0: ${MEMORY_CORS_SHELL:-http://localhost:4000}
+      Cors__Origins__1: ${MEMORY_CORS_FRONTEND:-http://localhost:4003}
 
 volumes:
   memory-sql:
