@@ -30,7 +30,7 @@ Para ejecutar el proyecto con Docker:
 Para ejecutar el proyecto directamente en la máquina:
 
 - .NET 10 SDK.
-- Node.js 24 LTS (`>=24.11.0 <25`).
+- Node.js 22 LTS (`>=22 <23`, ver `.nvmrc`).
 - SQL Server LocalDB u otra instancia compatible de SQL Server.
 
 ## Cómo ejecutar el backend con Docker Compose
@@ -150,7 +150,7 @@ npm start
 
 El microfrontend queda disponible en `http://localhost:4003`, con el remote `memoryGame`, según la configuración de Module Federation (ADR-003).
 
-Se requiere Node.js 24 LTS (`>=24.11.0 <25`).
+Se requiere Node.js 22 LTS (`>=22 <23`).
 
 ## Cómo jugar
 

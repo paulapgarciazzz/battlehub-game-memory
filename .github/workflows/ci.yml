@@ -86,7 +86,7 @@ jobs:
         if: steps.check-node.outputs.found == 'true'
         uses: actions/setup-node@v4
         with:
-          # Node 24 LTS desde .nvmrc (ADR-003 §1).
+          # Node 22 LTS desde .nvmrc (requisito R-42).
           node-version-file: src/memory-microfrontend/memory-game/.nvmrc
           cache: 'npm'
           cache-dependency-path: src/memory-microfrontend/memory-game/package-lock.json
