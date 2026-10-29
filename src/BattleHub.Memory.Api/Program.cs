@@ -36,14 +36,19 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
-// CORS: Shell y microfrontend de Memory
+// CORS: Shell y microfrontend de Memory. Los orígenes salen solo de la
+// configuración (appsettings.json o variables Cors__Origins__0, __1...).
 var corsOrigins = builder.Configuration
     .GetSection("Cors:Origins")
-    .Get<string[]>()
-    ?? [
-        "http://localhost:4000",
-        "http://localhost:4003"
-    ];
+    .Get<string[]>()?
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .ToArray();
+
+if (corsOrigins is not { Length: > 0 })
+{
+    throw new InvalidOperationException(
+        "Configurar Cors:Origins con las direcciones del Shell y del microfrontend.");
+}
 
 builder.Services.AddCors(options =>
     options.AddPolicy("MemoryCors", policy =>
