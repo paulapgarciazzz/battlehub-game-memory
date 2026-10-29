@@ -8,7 +8,7 @@ con **Webpack Module Federation**, según
 
 | Dato | Valor |
 |---|---|
-| Node.js | 24 LTS (`>=24.11.0 <25`, ver `.nvmrc`) |
+| Node.js | 22 LTS (`>=22 <23`, ver `.nvmrc`) |
 | `aurelia` y `@aurelia/*` | `2.0.0-rc.2` exacta |
 | Webpack | 5 |
 | Nombre del remote | `memoryGame` |
