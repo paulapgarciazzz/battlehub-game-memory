@@ -38,7 +38,6 @@ public class GameSession
     public Board Board { get; }
     public IReadOnlyList<Player> Players { get; }
 
-    // La hora de inicio la registra el servidor, no el cliente.
     public DateTimeOffset StartedAt { get; }
 
     private readonly object _lock = new();
