@@ -45,11 +45,9 @@ jobs:
               - 'global.json'
               - 'docker-compose.yml'
               - '.dockerignore'
-              - '.github/workflows/**'
 
             frontend:
               - 'src/memory-microfrontend/**'
-              - '.github/workflows/**'
 
       # Detección de cambios en push a main.
       - name: Detect changes in push
@@ -81,14 +79,13 @@ jobs:
               NuGet.config|\
               global.json|\
               docker-compose.yml|\
-              .dockerignore|\
-              .github/workflows/*)
+              .dockerignore)
                 backend=true
                 ;;
             esac
 
             case "$file" in
-              src/memory-microfrontend/*|.github/workflows/*)
+              src/memory-microfrontend/*)
                 frontend=true
                 ;;
             esac
@@ -146,7 +143,9 @@ jobs:
             const frontendCoverage = process.env.FRONTEND_COVERAGE;
 
             function formatComponent(changed, result, coverage) {
-              if (!changed) return 'No ejecutado (sin cambios).';
+              if (!changed) {
+                return 'No ejecutado (sin cambios).';
+              }
 
               const value =
                 coverage && coverage !== 'Unavailable'
