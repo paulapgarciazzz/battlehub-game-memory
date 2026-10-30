@@ -1,0 +1,78 @@
+name: Frontend CI
+
+on:
+  workflow_call:
+    outputs:
+      coverage:
+        description: "Cobertura de líneas del frontend"
+        value: ${{ jobs.frontend.outputs.coverage }}
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend (Aurelia)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/memory-microfrontend/memory-game
+
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percent }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/memory-microfrontend/memory-game/.nvmrc
+          cache: npm
+          cache-dependency-path: src/memory-microfrontend/memory-game/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run frontend tests
+        run: >
+          npx jest --ci --coverage
+          --coverageReporters=text
+          --coverageReporters=json-summary
+
+      - name: Validate frontend coverage (85%)
+        id: coverage
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          report = Path("coverage/coverage-summary.json")
+
+          if not report.exists():
+              percent = "Unavailable"
+              print("No se encontró el reporte de cobertura del frontend.")
+          else:
+              data = json.loads(report.read_text())
+              percent = str(data["total"]["lines"]["pct"])
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"percent={percent}\n")
+
+          print(f"Cobertura frontend: {percent}%")
+
+          if percent == "Unavailable" or float(percent) < 85:
+              print("La cobertura del frontend debe ser al menos 85%.")
+              sys.exit(1)
+          PY

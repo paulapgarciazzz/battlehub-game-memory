@@ -6,4 +6,7 @@ export interface MemoryGameHistoryDto {
   winnerUserId: string | null;
   isDraw: boolean;
   score: number;
+
+
+  
 }

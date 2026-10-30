@@ -1,0 +1,89 @@
+name: Backend CI
+
+on:
+  workflow_call:
+    outputs:
+      coverage:
+        description: "Cobertura de líneas del backend"
+        value: ${{ jobs.backend.outputs.coverage }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (.NET 10)
+    runs-on: ubuntu-latest
+
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percent }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore src/BattleHub.Memory.slnx
+
+      - name: Build backend
+        run: dotnet build src/BattleHub.Memory.slnx --no-restore --configuration Release
+
+      - name: Run backend tests
+        run: >
+          dotnet test src/BattleHub.Memory.slnx
+          --no-build
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory src/TestResults
+
+      - name: Install ReportGenerator
+        if: always()
+        run: dotnet tool install dotnet-reportgenerator-globaltool --tool-path .tools --version 5.4.4
+
+      - name: Merge coverage reports
+        if: always()
+        run: >
+          ./.tools/reportgenerator
+          "-reports:src/TestResults/**/coverage.cobertura.xml"
+          "-targetdir:src/coverage-merged"
+          "-reporttypes:Cobertura"
+
+      - name: Validate backend coverage (85%)
+        id: coverage
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path("src/coverage-merged/Cobertura.xml")
+
+          if not report.exists():
+              percent = "Unavailable"
+              print("No se encontró el reporte de cobertura del backend.")
+          else:
+              root = ET.parse(report).getroot()
+              covered = int(root.attrib["lines-covered"])
+              valid = int(root.attrib["lines-valid"])
+
+              percent = f"{covered / valid * 100:.2f}" if valid else "Unavailable"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"percent={percent}\n")
+
+          print(f"Cobertura backend: {percent}%")
+
+          if percent == "Unavailable" or float(percent) < 85:
+              print("La cobertura del backend debe ser al menos 85%.")
+              sys.exit(1)
+          PY
+
+      - name: Build Docker image
+        run: docker build -f src/BattleHub.Memory.Api/Dockerfile -t battlehub-memory-api .

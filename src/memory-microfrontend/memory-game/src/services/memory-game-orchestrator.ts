@@ -584,8 +584,7 @@ public async joinLocalMatch(
   }
 
   /**
-   * Sale de la partida y limpia el estado.
-   * Una práctica local no desconecta ni modifica las credenciales del Hub.
+   * Sale de la partida y limpia el estado
    */
  public async leaveMatch(): Promise<void> {
     const wasPractice =
