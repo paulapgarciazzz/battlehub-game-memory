@@ -210,3 +210,6 @@ export class MemoryHubService {
     this.displayName = null;
   }
 }
+
+
+// Prueba de ejecución del CI del frontend. IGNORAR
