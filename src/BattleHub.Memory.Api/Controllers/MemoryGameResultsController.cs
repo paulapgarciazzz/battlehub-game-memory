@@ -27,11 +27,9 @@ public class MemoryGameResultsController : ControllerBase
         _hub = hub;
     }
 
-    /// <summary>
     /// Registra el resultado de una partida finalizada. El Hub ya lo guarda
     /// al terminar la partida; este endpoint es idempotente, así que llamarlo
     /// de nuevo devuelve el mismo resultado sin duplicarlo.
-    /// </summary>
     [HttpPost("results")]
     public async Task<IActionResult> SaveResult(
         [FromBody] SaveMemoryResultRequest request,
