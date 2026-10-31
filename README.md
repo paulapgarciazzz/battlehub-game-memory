@@ -12,9 +12,8 @@ Las reglas del juego están en [ `docs/reglas-del-juego.md`](docs/reglas-del-jue
 | `src/BattleHub.Memory.Domain`          | Reglas del juego (`GameSession`, `Board`, `Player`)                                                                                                            |
 | `src/BattleHub.Memory.Data`            | Persistencia con EF Core y SQL Server ([ADR-001](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-001-motor-bd-juego-memoria.md)) |
 | `src/memory-microfrontend/memory-game` | Microfrontend en Aurelia 2, cargado por el Shell con Module Federation ([README](src/memory-microfrontend/memory-game/README.md))                              |
-| `tests/BattleHub.Memory.Domain.Tests`  | Pruebas unitarias del dominio                                                                                                                                  |
-| `tests/BattleHub.Memory.Data.Tests`    | Pruebas de integración de Data: esquema y datos de ejemplo en SQL Server                                                                                       |
-| `tests/BattleHub.Memory.Api.Tests`     | Pruebas de la API: unitarias con Moq e integración de SignalR y SQL                                                                                            |
+| `tests/BattleHub.Memory.UnitTests`     | Pruebas unitarias (Moq, sin base de datos) con las carpetas de `src`: `Domain`, `Api`, `Data`                                                                  |
+| `tests/BattleHub.Memory.IntegrationTests` | Pruebas de integración con SQL Server real y la API levantada: `Api` y `Data`                                                                             |
 | `scripts`                              | Script auxiliar para el desarrollo local                                                                                                                       |
 | `docs`                                 | Reglas del juego, API y contrato con el Shell                                                                                                                  |
 | `Dockerfile` de la API                 | Compilación y publicación de la API en una imagen multi-stage, ubicada en `src/BattleHub.Memory.Api/Dockerfile`                                                |
@@ -173,10 +172,21 @@ Desde la raíz del repositorio:
 dotnet test src/BattleHub.Memory.slnx
 ```
 
-Para ejecutar solamente las pruebas unitarias excluyendo las marcadas como integración:
+Las pruebas están en dos proyectos separados, con las mismas carpetas que `src`:
+
+- `tests/BattleHub.Memory.UnitTests`: pruebas unitarias. Las dependencias se reemplazan con Moq y no necesitan base de datos.
+- `tests/BattleHub.Memory.IntegrationTests`: pruebas de integración con SQL Server real y la API levantada en memoria.
+
+Para ejecutar solamente las pruebas unitarias:
 
 ```powershell
-dotnet test src/BattleHub.Memory.slnx --filter "Category!=Integration"
+dotnet test tests/BattleHub.Memory.UnitTests
+```
+
+Para ejecutar solamente las de integración:
+
+```powershell
+dotnet test tests/BattleHub.Memory.IntegrationTests
 ```
 
 ### Pruebas de integración
