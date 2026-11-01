@@ -24,6 +24,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- Script del servicio sample-data de docker-compose.yml; lo prueba SampleDataScriptTests. -->
+  <ItemGroup>
+    <None Include="..\..\docker\sample-data\datos-ejemplo.sql" Link="datos-ejemplo.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\BattleHub.Memory.Api\BattleHub.Memory.Api.csproj" />
     <ProjectReference Include="..\..\src\BattleHub.Memory.Data\BattleHub.Memory.Data.csproj" />
