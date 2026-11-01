@@ -1,17 +1,55 @@
-# API de Memory + SQL Server. Copiar .env.example a .env antes de usarlo.
+# API de Memory + SQL Server + microfrontend. Se levanta con "docker compose up",
+# sin pasos previos: el .env es opcional (ver .env.example).
 services:
+  # Deja la contraseña de sa en el volumen memory-secrets, sin escribirla en el
+  # repo. Si .env define MSSQL_SA_PASSWORD se usa esa; si no, se genera una al
+  # azar la primera vez y se reutiliza hasta "docker compose down -v".
+  sql-password:
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    user: root
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        file=/run/memory-secrets/sa_password
+        if [ -n "$$MSSQL_SA_PASSWORD" ]; then
+          printf '%s' "$$MSSQL_SA_PASSWORD" > "$$file"
+        elif [ ! -s "$$file" ]; then
+          # SQL Server pide mayúsculas, minúsculas y números.
+          until [[ "$$password" =~ [A-Z] && "$$password" =~ [a-z] && "$$password" =~ [0-9] ]]; do
+            password=$$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+          done
+          printf '%s' "$$password" > "$$file"
+        fi
+        # 10001 es el usuario mssql de la imagen de SQL Server.
+        chown 10001:0 "$$file"
+        chmod 440 "$$file"
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-}
+    volumes:
+      - memory-secrets:/run/memory-secrets
+
   sql:
     # Misma imagen que usan las pruebas de integración (Testcontainers).
     image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    depends_on:
+      sql-password:
+        condition: service_completed_successfully
+    # Lee la contraseña del volumen y sigue con el arranque normal de la imagen.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        export MSSQL_SA_PASSWORD="$$(cat /run/memory-secrets/sa_password)"
+        exec /opt/mssql/bin/permissions_check.sh /opt/mssql/bin/sqlservr
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Definir MSSQL_SA_PASSWORD en .env}
     ports:
       - "1433:1433"
     volumes:
       - memory-sql:/var/opt/mssql
+      - memory-secrets:/run/memory-secrets:ro
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$(cat /run/memory-secrets/sa_password)\" -C -Q \"SELECT 1\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -27,15 +65,37 @@ services:
     ports:
       # Mismo puerto que "dotnet run": el microfrontend no cambia.
       - "5095:8080"
+    # La cadena de conexión se arma al arrancar para no dejar la contraseña
+    # en la configuración del contenedor.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export ConnectionStrings__MemoryDatabase="Server=sql,1433;Database=BattleHubMemoryDb;User Id=sa;Password=$$(cat /run/memory-secrets/sa_password);TrustServerCertificate=True;MultipleActiveResultSets=true"
+        exec dotnet BattleHub.Memory.Api.dll
+    volumes:
+      - memory-secrets:/run/memory-secrets:ro
     environment:
       # Igual que el perfil "http" de launchSettings.json.
       ASPNETCORE_ENVIRONMENT: Development
       Database__MigrateOnStartup: "true"
       SampleData__Enabled: "true"
-      ConnectionStrings__MemoryDatabase: "Server=sql,1433;Database=BattleHubMemoryDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
       # Orígenes permitidos por CORS. Si no están en .env, se usan los locales.
       Cors__Origins__0: ${MEMORY_CORS_SHELL:-http://localhost:4000}
       Cors__Origins__1: ${MEMORY_CORS_FRONTEND:-http://localhost:4003}
 
+  frontend:
+    build:
+      context: src/memory-microfrontend/memory-game
+      args:
+        # Dirección de la API vista desde el navegador.
+        MEMORY_API_URL: ${MEMORY_API_URL:-http://localhost:5095}
+    depends_on:
+      - api
+    ports:
+      # Puerto de Memory según ADR-003: el Shell carga
+      # http://localhost:4003/remoteEntry.js.
+      - "4003:80"
+
 volumes:
   memory-sql:
+  memory-secrets:

@@ -14,17 +14,14 @@ Las reglas del juego están en [ `docs/reglas-del-juego.md`](docs/reglas-del-jue
 | `src/memory-microfrontend/memory-game` | Microfrontend en Aurelia 2, cargado por el Shell con Module Federation ([README](src/memory-microfrontend/memory-game/README.md))                              |
 | `tests/BattleHub.Memory.UnitTests`     | Pruebas unitarias (Moq, sin base de datos) con las carpetas de `src`: `Domain`, `Api`, `Data`                                                                  |
 | `tests/BattleHub.Memory.IntegrationTests` | Pruebas de integración con SQL Server real y la API levantada: `Api` y `Data`                                                                             |
-| `scripts`                              | Script auxiliar para el desarrollo local                                                                                                                       |
 | `docs`                                 | Reglas del juego, API y contrato con el Shell                                                                                                                  |
 | `Dockerfile` de la API                 | Compilación y publicación de la API en una imagen multi-stage, ubicada en `src/BattleHub.Memory.Api/Dockerfile`                                                |
-| `docker-compose.yml`                   | Configuración para ejecutar la API y SQL Server mediante Docker Compose                                                                                        |
+| `Dockerfile` del microfrontend         | Build de producción del microfrontend servido con nginx, ubicado en `src/memory-microfrontend/memory-game/Dockerfile`                                          |
+| `docker-compose.yml`                   | Configuración para ejecutar SQL Server, la API y el microfrontend mediante Docker Compose                                                                       |
 
 ## Requisitos
 
-Para ejecutar el proyecto con Docker:
-
-- Docker Desktop con Docker Compose.
-- Un archivo `.env` con las variables necesarias, creado a partir de `.env.example`.
+Para ejecutar el proyecto con Docker solo se necesita Docker Desktop con Docker Compose.
 
 Para ejecutar el proyecto directamente en la máquina:
 
@@ -32,42 +29,44 @@ Para ejecutar el proyecto directamente en la máquina:
 - Node.js 22 LTS (`>=22 <23`, ver `.nvmrc`).
 - SQL Server LocalDB u otra instancia compatible de SQL Server.
 
-## Cómo ejecutar el backend con Docker Compose
+## Cómo ejecutar el proyecto con Docker Compose
 
-Docker Compose permite iniciar la API y SQL Server sin instalar .NET SDK ni SQL Server directamente en la máquina. La imagen final de la API utiliza el runtime de .NET, mientras que la compilación y publicación se realizan en una etapa independiente del Dockerfile.
+Docker Compose inicia SQL Server, la API y el microfrontend sin instalar .NET SDK, Node.js ni SQL Server en la máquina. No hace falta ningún paso previo: en un clon limpio basta con un comando.
 
-### 1. Configurar las variables de entorno
-
-Desde la raíz del repositorio, ejecuta en PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Si ya tienes un archivo `.env`, no lo sobrescribas. Ábrelo y modifica las variables necesarias.
-
-Edita `.env` y establece una contraseña segura para `MSSQL_SA_PASSWORD`. Debe cumplir los requisitos de SQL Server y no ser una contraseña real compartida públicamente.
-
-**Importante:** el archivo `.env` contiene configuración local y secretos. No lo subas al repositorio ni compartas su contenido.
-
-### 2. Construir e iniciar los servicios
+### 1. Iniciar los servicios
 
 Ejecuta desde la raíz del repositorio:
 
 ```powershell
-docker compose up --build -d
+docker compose up
 ```
+
+Para dejarlo en segundo plano, agrega `-d`. Si cambiaste el código y quieres reconstruir las imágenes, agrega `--build`.
 
 Docker Compose realiza las siguientes operaciones:
 
-1. Construye la API utilizando el Dockerfile multi-stage.
-2. Inicia SQL Server.
-3. Espera a que SQL Server esté saludable mediante su comprobación de estado.
-4. Inicia la API cuando la base de datos está disponible.
-5. La API aplica las migraciones de Entity Framework Core al arrancar, mediante `Database__MigrateOnStartup=true`, configurado en `docker-compose.yml`.
-6. La API carga los datos de ejemplo si `SampleData__Enabled` está habilitado.
+1. Prepara la contraseña de `sa` de SQL Server (ver [Contraseña de SQL Server](#contraseña-de-sql-server)).
+2. Construye la API y el microfrontend con sus Dockerfile multi-stage.
+3. Inicia SQL Server y espera a que esté saludable mediante su comprobación de estado.
+4. Inicia la API cuando la base de datos está disponible. La API aplica las migraciones de Entity Framework Core al arrancar (`Database__MigrateOnStartup=true`) y carga los datos de ejemplo (`SampleData__Enabled=true`).
+5. Sirve el build de producción del microfrontend con nginx.
 
-La imagen final contiene los archivos publicados necesarios para ejecutar la API, no el SDK de compilación ni el código fuente completo.
+Las imágenes finales contienen solo lo necesario para ejecutar cada servicio, no el SDK de .NET, Node.js ni el código fuente completo.
+
+### 2. Contraseña de SQL Server
+
+La contraseña no está escrita en ningún archivo del repositorio:
+
+- Si no existe `.env`, el servicio `sql-password` genera una contraseña al azar la primera vez y la guarda en el volumen `memory-secrets`. SQL Server y la API la leen de ahí, y se reutiliza en cada `docker compose up` hasta que se borren los volúmenes.
+- Si quieres usar una propia, copia `.env.example` a `.env` y define `MSSQL_SA_PASSWORD`. Debe cumplir los requisitos de complejidad de SQL Server y no llevar `;`.
+
+Para consultar la contraseña generada (por ejemplo, para conectarte desde SQL Server Management Studio):
+
+```powershell
+docker compose exec sql cat /run/memory-secrets/sa_password
+```
+
+**Importante:** SQL Server solo toma la contraseña al crear su volumen. Si cambias `MSSQL_SA_PASSWORD` con la base ya creada, ejecuta `docker compose down -v` para empezar de cero. El archivo `.env` no se sube al repositorio.
 
 ### 3. Comprobar el estado de los servicios
 
@@ -99,13 +98,15 @@ Si hay un error de conexión, configuración o migración, revisa los registros 
 
 ### 4. Direcciones de acceso
 
-| Servicio      | Dirección                           |
-| ------------- | ----------------------------------- |
-| API de Memory | `http://localhost:5095`             |
-| SQL Server    | `localhost,1433`                    |
-| Hub SignalR   | `http://localhost:5095/hubs/memory` |
+| Servicio                        | Dirección                              |
+| ------------------------------- | -------------------------------------- |
+| Microfrontend                   | `http://localhost:4003`                |
+| Remote de Module Federation     | `http://localhost:4003/remoteEntry.js` |
+| API de Memory                   | `http://localhost:5095`                |
+| Hub SignalR                     | `http://localhost:5095/hubs/memory`    |
+| SQL Server                      | `localhost,1433`                       |
 
-La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina.
+La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina. El microfrontend usa el puerto `80` de nginx y se publica en el `4003`.
 
 ### 5. Detener los servicios
 
@@ -115,13 +116,15 @@ Para detener los contenedores sin eliminar los datos persistentes:
 docker compose down
 ```
 
-Para detenerlos y eliminar también el volumen de SQL Server:
+Para detenerlos y eliminar también los volúmenes (base de datos y contraseña generada):
 
 ```powershell
 docker compose down -v
 ```
 
-**Advertencia:** `docker compose down -v` elimina el volumen de la base de datos de este proyecto y, con él, sus datos persistentes. Úsalo solamente cuando quieras borrar esa información.
+Después se puede volver a levantar con `docker compose up`: se genera una contraseña nueva, se crea la base, se aplican las migraciones y se cargan los datos de ejemplo.
+
+**Advertencia:** `docker compose down -v` elimina los volúmenes de este proyecto y, con ellos, las partidas guardadas. Úsalo solamente cuando quieras borrar esa información.
 
 ## Ejecución local sin Docker
 
@@ -137,9 +140,9 @@ La dirección y el perfil de ejecución pueden depender de la configuración loc
 
 La configuración de conexión a SQL Server debe coincidir con la instancia disponible. Para aplicar las migraciones al arrancar, configura `Database:MigrateOnStartup` según el mecanismo admitido por la aplicación.
 
-## Cómo ejecutar el microfrontend
+## Cómo ejecutar el microfrontend sin Docker
 
-Abre una terminal y ejecuta:
+`docker compose up` ya sirve el microfrontend en el puerto `4003`. Para desarrollarlo con recarga automática, detén ese servicio (`docker compose stop frontend`) y en otra terminal ejecuta:
 
 ```powershell
 cd src/memory-microfrontend/memory-game
@@ -200,10 +203,11 @@ Las pruebas de integración necesitan una instancia de SQL Server.
 setx MEMORY_TEST_CONNECTION "Server=(localdb)\mssqllocaldb;Integrated Security=true;TrustServerCertificate=true"
 ```
 
-- **Con Docker:** si quieres utilizar el SQL Server del archivo `docker-compose.yml`, define la variable de conexión en la terminal actual. Sustituye el marcador por la contraseña configurada en `.env`; no escribas la contraseña real en el README.
+- **Con Docker:** si quieres utilizar el SQL Server del archivo `docker-compose.yml`, define la variable de conexión en la terminal actual. La contraseña se lee del contenedor, así que no hace falta escribirla:
 
 ```powershell
-$env:MEMORY_TEST_CONNECTION = "Server=localhost,1433;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True"
+$sa = docker compose exec sql cat /run/memory-secrets/sa_password
+$env:MEMORY_TEST_CONNECTION = "Server=localhost,1433;User Id=sa;Password=$sa;TrustServerCertificate=True"
 ```
 
 Sin esa variable, las pruebas pueden crear su propio contenedor de SQL Server mediante Testcontainers, siempre que Docker esté disponible y la configuración de pruebas lo permita.
@@ -238,7 +242,9 @@ En la configuración de Docker Compose se utilizan variables de entorno de .NET 
 - `ConnectionStrings__MemoryDatabase`
 - `Database__MigrateOnStartup`
 - `SampleData__Enabled`
-- `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`.
+- `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`, con `http://localhost:4000` y `http://localhost:4003` por defecto.
+
+El microfrontend de Docker Compose usa la API en `http://localhost:5095`. Para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
 
 Los valores de conexión y credenciales dependen del entorno de ejecución.
 

@@ -1,0 +1,6 @@
+# Las dependencias y el build se generan dentro de la imagen.
+node_modules
+dist
+coverage
+.env
+.env.*
