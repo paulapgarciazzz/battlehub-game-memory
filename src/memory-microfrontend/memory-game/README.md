@@ -14,28 +14,16 @@ Microfrontend del juego de Memoria del Equipo 6, desarrollado con **Aurelia 2** 
 | ------------------ | -----: | ------------------------------------------------------------- |
 | API                | `5095` | API del juego de Memoria y comunicación con el cliente.       |
 | SQL Server         | `1433` | Base de datos utilizada por la API.                           |
-| Microfrontend      | `4003` | Servidor de desarrollo y archivo remoto de Module Federation. |
+| Microfrontend      | `4003` | Juego y archivo remoto de Module Federation.                  |
 | Shell de BattleHub | `4000` | Aplicación externa que integra y muestra el juego.            |
 
 El microfrontend expone el módulo `./GameModule` con el nombre remoto `memoryGame`. El archivo remoto se encuentra en:
 
 `http://localhost:4003/remoteEntry.js`
 
-**Importante:** Docker Compose inicia la API y SQL Server. El microfrontend y el Shell se ejecutan por separado, por lo que deben iniciarse cuando se necesite probar la integración completa.
+**Importante:** Docker Compose inicia SQL Server, la API y el microfrontend. El Shell se ejecuta por separado y debe iniciarse cuando se necesite probar la integración completa.
 
-## Configuración de variables de entorno
-
-En la raíz del repositorio, crea un archivo `.env` a partir de `.env.example` y configura las siguientes variables:
-
-| Variable               | Descripción                                                                                          | Valor de desarrollo     |
-| ---------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------- |
-| `MSSQL_SA_PASSWORD`    | Contraseña del usuario `sa` de SQL Server. Debe cumplir los requisitos de complejidad de SQL Server. | `CambiarEsto_123`       |
-| `MEMORY_CORS_SHELL`    | Origen del Shell autorizado para realizar solicitudes a la API.                                      | `http://localhost:4000` |
-| `MEMORY_CORS_FRONTEND` | Origen del microfrontend autorizado para realizar solicitudes a la API.                              | `http://localhost:4003` |
-
-La contraseña mostrada es únicamente un ejemplo para desarrollo. Utiliza una contraseña propia que cumpla los requisitos de SQL Server y no compartas credenciales reales ni subas el archivo `.env` al repositorio.
-
-## Cómo iniciar la API y la base de datos
+## Cómo iniciarlo con Docker Compose
 
 Desde la raíz del repositorio, ejecuta:
 
@@ -43,19 +31,19 @@ Desde la raíz del repositorio, ejecuta:
 docker compose up
 ```
 
-Docker Compose iniciará los servicios definidos en `docker-compose.yml`, correspondientes a SQL Server y la API.
+No hace falta crear un `.env`: la contraseña de SQL Server se genera sola y los demás valores tienen uno por defecto. Si quieres cambiarlos, consulta `.env.example` y el [README de la raíz](../../../README.md).
 
-Para detener los servicios, presiona `Ctrl+C`. Si necesitas detener también los contenedores, ejecuta:
+En el contenedor, el microfrontend es el build de producción (`npm run build`) servido con nginx. Usa la API en `http://localhost:5095`; para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
+
+Para detener los servicios, presiona `Ctrl+C` o ejecuta:
 
 ```bash
 docker compose down
 ```
 
-La API estará disponible en `http://localhost:5095` y SQL Server escuchará en el puerto `1433`.
+## Ejecutar el microfrontend en modo desarrollo
 
-## Ejecutar el microfrontend
-
-Una vez iniciados los servicios de la API y la base de datos, abre una terminal en:
+Para trabajar con recarga automática, detén el microfrontend del compose (`docker compose stop frontend`) y abre una terminal en:
 
 ```text
 src/memory-microfrontend/memory-game
@@ -76,10 +64,9 @@ La configuración de conexión del cliente se encuentra en `config/environment.j
 
 Para probar el juego dentro de BattleHub:
 
-1. Inicia la API y SQL Server con `docker compose up`.
-2. Inicia el microfrontend en el puerto `4003`.
-3. Configura el Shell para cargar el remoto desde `http://localhost:4003/remoteEntry.js`.
-4. Inicia el Shell en el puerto `4000`.
+1. Inicia SQL Server, la API y el microfrontend con `docker compose up`.
+2. Configura el Shell para cargar el remoto desde `http://localhost:4003/remoteEntry.js`.
+3. Inicia el Shell en el puerto `4000`.
 
 La configuración del remoto debe apuntar al módulo `./GameModule` y utilizar el nombre `memoryGame`.
 
