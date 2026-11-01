@@ -13,9 +13,13 @@
   align-items: center;
 }
 
-/* Dentro del Shell el juego ocupa solo el área asignada (contrato 03, sección 7). */
+/*
+ * Dentro del Shell el juego ocupa solo el área asignada (contrato 03, sección 7).
+ * El alto mínimo de 700 px lo pone el Shell en su área, que ya incluye su relleno;
+ * si el juego lo repitiera, se saldría del área y la página tendría scroll.
+ */
 .memory-game--embedded {
-  min-height: 700px;
+  min-height: 100%;
 }
 
 .memory-game__waiting {
