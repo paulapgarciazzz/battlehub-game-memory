@@ -1,4 +1,4 @@
-# API de Memory + SQL Server + microfrontend. Se levanta con "docker compose up",
+# API de Memory + SQL Server + datos de ejemplo + microfrontend. Se levanta con "docker compose up",
 # sin pasos previos: el .env es opcional (ver .env.example).
 services:
   # Deja la contraseña de sa en el volumen memory-secrets, sin escribirla en el
@@ -78,10 +78,38 @@ services:
       # Igual que el perfil "http" de launchSettings.json.
       ASPNETCORE_ENVIRONMENT: Development
       Database__MigrateOnStartup: "true"
-      SampleData__Enabled: "true"
       # Orígenes permitidos por CORS. Si no están en .env, se usan los locales.
       Cors__Origins__0: ${MEMORY_CORS_SHELL:-http://localhost:4000}
       Cors__Origins__1: ${MEMORY_CORS_FRONTEND:-http://localhost:4003}
+    # La API aplica las migraciones antes de escuchar, así que si /health
+    # responde ya están aplicadas. La imagen de ASP.NET no trae curl: la
+    # petición se hace con bash.
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health HTTP/1.0\r\n\r\n' >&3 && grep -q Healthy <&3
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Carga las partidas de ejemplo con sqlcmd y docker/sample-data/datos-ejemplo.sql
+  # (R-28), aparte de la API. Corre cuando la API ya aplicó las migraciones y
+  # termina; si las partidas ya están, no inserta nada.
+  sample-data:
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        exec /opt/mssql-tools18/bin/sqlcmd -S sql -U sa -P "$$(cat /run/memory-secrets/sa_password)" -C -d BattleHubMemoryDb -b -i /sample-data/datos-ejemplo.sql
+    volumes:
+      - memory-secrets:/run/memory-secrets:ro
+      - ./docker/sample-data:/sample-data:ro
 
   frontend:
     build:

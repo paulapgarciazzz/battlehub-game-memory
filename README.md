@@ -17,7 +17,8 @@ Las reglas del juego están en [ `docs/reglas-del-juego.md`](docs/reglas-del-jue
 | `docs`                                 | Reglas del juego, API y contrato con el Shell                                                                                                                  |
 | `Dockerfile` de la API                 | Compilación y publicación de la API en una imagen multi-stage, ubicada en `src/BattleHub.Memory.Api/Dockerfile`                                                |
 | `Dockerfile` del microfrontend         | Build de producción del microfrontend servido con nginx, ubicado en `src/memory-microfrontend/memory-game/Dockerfile`                                          |
-| `docker-compose.yml`                   | Configuración para ejecutar SQL Server, la API y el microfrontend mediante Docker Compose                                                                       |
+| `docker-compose.yml`                   | Configuración para ejecutar SQL Server, la API, los datos de ejemplo y el microfrontend mediante Docker Compose                                                 |
+| `docker/sample-data`                   | Script SQL con los datos de ejemplo que carga Docker Compose                                                                                                   |
 
 ## Requisitos
 
@@ -48,8 +49,9 @@ Docker Compose realiza las siguientes operaciones:
 1. Prepara la contraseña de `sa` de SQL Server (ver [Contraseña de SQL Server](#contraseña-de-sql-server)).
 2. Construye la API y el microfrontend con sus Dockerfile multi-stage.
 3. Inicia SQL Server y espera a que esté saludable mediante su comprobación de estado.
-4. Inicia la API cuando la base de datos está disponible. La API aplica las migraciones de Entity Framework Core al arrancar (`Database__MigrateOnStartup=true`) y carga los datos de ejemplo (`SampleData__Enabled=true`).
-5. Sirve el build de producción del microfrontend con nginx.
+4. Inicia la API cuando la base de datos está disponible. La API aplica las migraciones de Entity Framework Core al arrancar (`Database__MigrateOnStartup=true`) y queda saludable cuando responde en `/health`.
+5. Cuando la API está saludable, el servicio `sample-data` carga los datos de ejemplo con `sqlcmd` y el script `docker/sample-data/datos-ejemplo.sql`, y termina (ver [Datos de ejemplo](#datos-de-ejemplo)).
+6. Sirve el build de producción del microfrontend con nginx.
 
 Las imágenes finales contienen solo lo necesario para ejecutar cada servicio, no el SDK de .NET, Node.js ni el código fuente completo.
 
@@ -87,6 +89,14 @@ Para consultar los registros de SQL Server:
 ```powershell
 docker compose logs sql
 ```
+
+Para consultar los registros de la carga de datos de ejemplo:
+
+```powershell
+docker compose logs sample-data
+```
+
+El contenedor `sample-data` aparece como `exited (0)` cuando la carga terminó bien.
 
 Para revisar los últimos registros de la API:
 
@@ -234,14 +244,13 @@ Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api
 | `ConnectionStrings:MemoryDatabase` | Cadena de conexión a SQL Server; en el desarrollo local puede utilizar LocalDB con la base `BattleHubMemoryDb`. |
 | `Cors:Origins`                     | Orígenes permitidos (Shell y microfrontend). Obligatorio: la API no arranca si está vacío.                      |
 | `Database:MigrateOnStartup`        | Indica si la API aplica las migraciones al arrancar. En Docker Compose está habilitado.                         |
-| `SampleData:Enabled`               | Indica si se cargan partidas de ejemplo al arrancar.                                                            |
-| `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo.                                           |
+| `SampleData:Enabled`               | Indica si la API carga partidas de ejemplo al arrancar. Solo se usa con `dotnet run`, no en Docker Compose.     |
+| `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo de `SampleData:Enabled`.                   |
 
 En la configuración de Docker Compose se utilizan variables de entorno de .NET con doble guion bajo para representar secciones anidadas. Algunos ejemplos son:
 
 - `ConnectionStrings__MemoryDatabase`
 - `Database__MigrateOnStartup`
-- `SampleData__Enabled`
 - `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`, con `http://localhost:4000` y `http://localhost:4003` por defecto.
 
 El microfrontend de Docker Compose usa la API en `http://localhost:5095`. Para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
@@ -250,12 +259,21 @@ Los valores de conexión y credenciales dependen del entorno de ejecución.
 
 ## Datos de ejemplo
 
-Cuando `SampleData:Enabled=true`, la API puede cargar 18 partidas terminadas de los últimos 30 días para que el historial y las estadísticas tengan datos sin necesidad de jugar.
+Hay 18 partidas terminadas de los últimos 30 días para que el historial y las estadísticas tengan datos sin necesidad de jugar.
 
-Los jugadores predeterminados son Ana, Bruno, Carla y Diego (`demo|ana`, `demo|bruno`, `demo|carla`, `demo|diego`). Cada uno tiene nueve partidas, con victorias, derrotas y tres empates.
+Los jugadores son Ana, Bruno, Carla y Diego (`demo|ana`, `demo|bruno`, `demo|carla`, `demo|diego`). Cada uno tiene nueve partidas, con victorias, derrotas y tres empates. Las partidas se llaman `ejemplo-001` a `ejemplo-018`, y si ya existen no se vuelven a insertar.
 
-- La carga se implementa en `src/BattleHub.Memory.Data/Seed/SampleDataSeeder.cs`, fuera del `DbContext`.
-- La carga está diseñada para ejecutarse una sola vez: si ya existen las partidas `ejemplo-001` a `ejemplo-018`, no vuelve a insertarlas.
+### Con Docker Compose
+
+Los carga el servicio `sample-data`, independiente de la API: un contenedor con `sqlcmd` que ejecuta `docker/sample-data/datos-ejemplo.sql` después de que la API aplicó las migraciones. La API no participa en la carga.
+
+- El script se ejecuta en cada `docker compose up`, pero solo inserta datos la primera vez.
+- Para cambiar los jugadores o las partidas, edita el script y borra los volúmenes con `docker compose down -v`, o elimina antes las partidas `ejemplo-001` a `ejemplo-018`.
+- La prueba `tests/BattleHub.Memory.IntegrationTests/Data/Seed/SampleDataScriptTests.cs` ejecuta el mismo script sobre la base con las migraciones, para detectar si una migración lo rompe.
+
+### Con `dotnet run`
+
+Cuando `SampleData:Enabled=true` (así viene en `launchSettings.json`), la API carga las mismas partidas al arrancar. La carga se implementa en `src/BattleHub.Memory.Data/Seed/SampleDataSeeder.cs`, fuera del `DbContext`.
 
 Para asociar partidas de ejemplo a una cuenta real, puedes configurar el identificador del usuario (el `currentUser.id` que entrega el Shell) mediante variables de entorno. Por ejemplo:
 
