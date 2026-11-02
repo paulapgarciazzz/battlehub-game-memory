@@ -1,9 +1,8 @@
 import { createFixture } from '@aurelia/testing';
-import type { GameContext } from '../src/game-contracts';
-import { GameModule } from '../src/game-module';
-import { MemoryStandalone } from '../src/memory-standalone';
-import { MemoryGameState } from '../src/state/memory-game-state';
-import { createFakeHub, createFakeHttp, createTestContainer, fakeRegistrations } from './fakes';
+import type { GameContext } from '../../src/game-contracts';
+import { GameModule } from '../../src/game-module';
+import { MemoryGameState } from '../../src/state/memory-game-state';
+import { createFakeHub, createFakeHttp, createTestContainer, fakeRegistrations } from '../fakes';
 
 const context: GameContext = { matchId: 'match-001', gameType: 'memory', currentUser: { id: 'user-001', displayName: 'Ana' } };
 
@@ -88,18 +87,5 @@ describe('GameModule (contrato con el Shell)', () => {
 
     expect(appHost.textContent).toContain('Esperando al rival para la partida match-001');
     expect(appHost.querySelector('form')).toBeNull();
-  });
-});
-
-describe('MemoryStandalone (modo de desarrollo local)', () => {
-  it('muestra la pantalla de unión con código de partida', async () => {
-    const { appHost, startPromise } = createFixture(
-      '<memory-standalone></memory-standalone>',
-      class {},
-      [MemoryStandalone, ...fakeRegistrations(createFakeHub(), createFakeHttp())]);
-    await startPromise;
-
-    expect(appHost.querySelector('form')).not.toBeNull();
-    expect(appHost.textContent).toContain('Código de partida');
   });
 });
