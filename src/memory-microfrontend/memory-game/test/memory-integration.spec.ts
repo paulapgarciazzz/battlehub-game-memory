@@ -15,8 +15,8 @@ describe('Integración de Memory con el Shell', () => {
   it('rechaza el contexto de otro juego o sin datos, sin pedir tokens', async () => {
     const container = createTestContainer(); const game = container.invoke(GameModule);
     const context = {matchId: 'room', gameType: 'memory' as const, currentUser: {id: 'u1', displayName: 'Ana'}};
-    await expect(game.initialize({...context, gameType: 'trivia'})).rejects.toThrow('matchId');
-    await expect(game.initialize({...context, currentUser: {id: 'u1', displayName: ''}})).rejects.toThrow('matchId');
+    await expect(game.initialize({...context, gameType: 'trivia'})).rejects.toThrow('gameType memory');
+    await expect(game.initialize({...context, currentUser: {id: 'u1', displayName: ''}})).rejects.toThrow('currentUser');
     await expect(game.initialize(context)).resolves.toBeUndefined();
   });
   it('restaura el marcador y las cartas desde el servidor y elimina listeners al salir', async () => {

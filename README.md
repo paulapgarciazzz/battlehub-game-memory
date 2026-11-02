@@ -171,7 +171,8 @@ Las partidas competitivas se juegan **desde el Shell** (`http://localhost:4000`)
 El juego **no tiene contacto con Auth0 ni con Matchmaking**:
 
 - La API y el hub no piden token. El jugador es el `currentUser` que entrega el Shell.
-- Cuando la partida termina, el microfrontend emite el evento DOM `battlehub:game-finished` con el ganador y los puntajes. El Shell lo escucha y avisa a Matchmaking. El juego nunca llama a Matchmaking.
+- Cuando la partida termina, el microfrontend emite `battlehub:game-finished` en `context.events`, el canal que le entrega el Shell. El Shell lo escucha y avisa a Matchmaking. El juego nunca llama a Matchmaking.
+- Desde el botón **Practicar** del Shell se abre la **práctica** (`mode: "practice"`): una partida de un jugador, sin sala, que corre en el navegador sin guardar nada ni avisar el fin.
 
 El detalle del evento está en [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
 
@@ -293,7 +294,8 @@ A partir de [ `battlehub-contracts`](https://github.com/javiercoulon-public/batt
 - Contrato de entrada al juego (`matchId`, `gameType`, `currentUser`) y ciclo de vida de `GameModule` (contrato 03).
 - API de resultados, historial y estadísticas (contrato 04).
 - Integración con el Shell mediante Module Federation (ADR-003).
-- Aviso de fin de partida al Shell con el evento DOM `battlehub:game-finished`. El Shell avisa a Matchmaking.
+- Aviso de fin de partida al Shell con `battlehub:game-finished` en `context.events`. El Shell avisa a Matchmaking.
+- Modo práctica dentro del Shell (`mode: "practice"`), sin sala ni registros (R-44).
 
 Para más información sobre la API y el contrato con el Shell, consulta [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
 

@@ -47,7 +47,7 @@ Según los requisitos de BattleHub, **ningún juego tiene contacto con Auth0**. 
 
 - La API REST y el hub `/hubs/memory` no piden token ni encabezado `Authorization`.
 - El jugador es el `currentUser.id` que entrega el Shell; el hub lo recibe en `JoinMatch`.
-- El juego no llama a Matchmaking. Al terminar la partida avisa al Shell con un evento (sección 5.5) y el Shell avisa a Matchmaking.
+- El juego no llama a Matchmaking. Al terminar la partida avisa al Shell con un evento (sección 5.6) y el Shell avisa a Matchmaking.
 
 ### Códigos HTTP generales
 
@@ -405,31 +405,51 @@ El Shell carga el módulo y llama a su ciclo de vida en este orden:
 
 ### 5.3. Contexto que recibe Memory
 
-El contrato `GameContext` es el del contrato 03 (sección 5), sin extensiones:
+El contexto sigue el contrato 03 (sección 5) y lo acordado con el Equipo 3 en el PR #6 del Shell (commit `829d9bc`): el canal `events` y el modo práctica. El Shell abre Memory de dos formas.
 
-| Campo                     | Tipo   | Descripción                                      |
-| ------------------------- | ------ | ------------------------------------------------ |
-| `matchId`                 | string | Identificador de la sala creada por Matchmaking. |
-| `gameType`                | string | Debe ser `"memory"`.                             |
-| `currentUser.id`          | string | Identificador del usuario que entrega el Shell.  |
-| `currentUser.displayName` | string | Nombre que se muestra en la partida.             |
+**Partida normal**, desde una sala. No trae `mode`:
 
-Ejemplo del contexto:
+| Campo                     | Tipo        | Descripción                                                   |
+| ------------------------- | ----------- | ------------------------------------------------------------- |
+| `matchId`                 | string      | Identificador de la sala creada por Matchmaking. Obligatorio. |
+| `gameType`                | string      | Debe ser `"memory"`.                                          |
+| `currentUser.id`          | string      | Identificador del usuario que entrega el Shell.               |
+| `currentUser.displayName` | string      | Nombre que se muestra en la partida.                          |
+| `events`                  | EventTarget | Canal que el Shell crea para la partida. No contiene tokens.  |
 
 ```ts
 const context = {
   matchId: "MEMORY-TEST-001",
   gameType: "memory",
-  currentUser: {
-    id: "auth0|usuario-de-prueba",
-    displayName: "Jugador Uno",
-  },
+  currentUser: { id: "auth0|usuario-de-prueba", displayName: "Jugador Uno" },
+  events: new EventTarget(),
 };
 ```
 
-`initialize()` valida que el contexto contenga el tipo de juego `memory`, el identificador de partida y los datos del usuario. Si faltan datos obligatorios, la inicialización falla.
+**Práctica**, sin sala. Trae `mode: "practice"` y no trae `matchId`:
 
-### 5.4. Entrada a la partida
+```ts
+const context = {
+  mode: "practice",
+  gameType: "memory",
+  currentUser: { id: "auth0|usuario-de-prueba", displayName: "Jugador Uno" },
+  events: new EventTarget(),
+};
+```
+
+`initialize()` valida que el tipo de juego sea `memory` y que estén los datos del usuario. En una partida normal también exige `matchId`. Si llega un `mode` distinto de `"practice"`, la inicialización falla.
+
+### 5.4. Modos de juego
+
+| Modo                     | Quién lo abre                                        | Sala | Servidor | Se guarda | Avisa el fin al Shell |
+| ------------------------ | ---------------------------------------------------- | ---- | -------- | --------- | --------------------- |
+| Partida (sin `mode`)     | Shell, desde una sala                                | Sí   | Sí       | Sí        | Sí                    |
+| Práctica (`"practice"`)  | Shell, desde "Practicar" (solo con acceso al juego)  | No   | No       | No        | No                    |
+| Playground               | `http://localhost:4003`, sin Shell                   | No   | Opcional | No        | No                    |
+
+En práctica, Memory juega el modo solo: una partida de un jugador que corre completa en el navegador, sin conectarse al hub, sin guardar resultados y sin emitir `battlehub:game-finished`, porque no hay sala que cerrar. Al terminar muestra el resultado y el botón "Jugar de nuevo" para repetir la práctica.
+
+### 5.5. Entrada a una partida normal
 
 Al ejecutar `start()`, el microfrontend invoca `JoinMatch(matchId, userId, displayName)` en el hub competitivo con los datos del contexto.
 
@@ -437,18 +457,14 @@ Al ejecutar `start()`, el microfrontend invoca `JoinMatch(matchId, userId, displ
 - Un tercer jugador no puede entrar a una partida que ya tiene a sus dos jugadores.
 - Un jugador de la partida puede volver a entrar (por ejemplo, al recargar) y recibe el estado actual.
 
-Memory no consulta a Matchmaking: el Shell solo abre el juego cuando la sala ya está lista.
+Memory no consulta a Matchmaking: el Shell solo abre el juego cuando la sala ya está lista. El Shell llama a `start()` por su cuenta; Memory no escucha `battlehub:game-start`.
 
-### 5.5. Evento de fin de partida
+### 5.6. Evento de fin de partida
 
-Cuando la partida termina, el elemento `memory-game-module` emite un evento DOM:
+Cuando una partida normal termina, Memory emite `battlehub:game-finished`:
 
-| Propiedad  | Valor                                             |
-| ---------- | ------------------------------------------------- |
-| Nombre     | `battlehub:game-finished`                         |
-| Tipo       | `CustomEvent`                                     |
-| `bubbles`  | `true` (se puede escuchar en el área o en window) |
-| `composed` | `true`                                            |
+- En **`context.events`**, que es donde lo escucha el Shell.
+- También desde el elemento `memory-game-module`, con `bubbles: true` (sube hasta `window`), para el Shell que todavía no entrega el canal.
 
 Contenido de `event.detail`:
 
@@ -465,15 +481,16 @@ Contenido de `event.detail`:
 }
 ```
 
+- El Shell usa `matchId` y `gameType` para saber de qué partida es el aviso. `isDraw`, `winnerUserId` y `players` son datos extra: el Shell no los procesa, no los guarda ni los envía a Matchmaking.
 - Se emite una sola vez por partida, en la pantalla de cada uno de los dos jugadores. El aviso del Shell a Matchmaking debe tolerar que llegue dos veces.
 - `winnerUserId` es `null` cuando hay empate.
-- Solo se emite dentro del Shell. El modo local, solo y práctica no lo emiten.
+- No se emite en práctica ni en el playground.
 
 Ejemplo de cómo lo escucha el Shell:
 
 ```ts
-window.addEventListener("battlehub:game-finished", (event) => {
-  const { matchId } = (event as CustomEvent).detail;
+context.events.addEventListener("battlehub:game-finished", (event) => {
+  const { matchId, gameType } = (event as CustomEvent).detail;
   // El Shell avisa a Matchmaking que la partida terminó.
 });
 ```
