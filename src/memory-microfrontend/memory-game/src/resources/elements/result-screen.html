@@ -17,6 +17,7 @@
     <button type="button" click.trigger="retrySave()">Reintentar</button>
   </p>
 
-  <!-- Dentro del Shell no hay "Jugar de nuevo": el Shell decide a dónde volver. -->
-  <button type="button" class="memory-game-result-screen__play-again" click.trigger="playAgain()" if.bind="!state.embedded">Jugar de nuevo</button>
+  <!-- En una partida del Shell no hay "Jugar de nuevo": el Shell decide a dónde volver.
+       En la práctica del Shell sí se puede repetir. -->
+  <button type="button" class="memory-game-result-screen__play-again" click.trigger="playAgain()" if.bind="!state.embedded || state.soloMode">Jugar de nuevo</button>
 </div>

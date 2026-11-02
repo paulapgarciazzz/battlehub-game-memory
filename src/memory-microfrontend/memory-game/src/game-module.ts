@@ -3,8 +3,8 @@ import template from './game-module.html';
 import './memory-app.css';
 import {
   GAME_FINISHED_EVENT,
-  type GameContext,
   type GameFinishedDetail,
+  type GameLaunchContext,
   type GameModule as IGameModule
 } from './game-contracts';
 import {GameView} from './resources/elements/game-view';
@@ -21,7 +21,10 @@ import backgroundImage from './assets/backgrounds/background.webp';
  * El matchId y el usuario vienen del Shell (que los recibe de Matchmaking y
  * Auth0): aquí no hay pantalla de unión ni código de partida. El juego no
  * tiene contacto con Auth0 ni con Matchmaking. Al terminar la partida emite
- * el evento DOM "battlehub:game-finished" y el Shell avisa a Matchmaking.
+ * "battlehub:game-finished" en context.events y el Shell avisa a Matchmaking.
+ *
+ * Con mode: 'practice' el Shell abre el juego sin sala: se juega el modo solo
+ * en el navegador, sin servidor, sin guardar nada y sin avisar el fin.
  *
  * El nombre del elemento lleva el prefijo del juego (ADR-003, sección 3). Con
  * @customElement explícito, las dependencias se declaran aquí y no con
@@ -36,18 +39,31 @@ export class GameModule implements IGameModule {
   public readonly backgroundStyle = `background-image: url(${backgroundImage})`;
 
   private readonly orchestrator = resolve(MemoryGameOrchestrator);
-  private context: GameContext | null = null;
+  private context: GameLaunchContext | null = null;
   private joined = false;
 
-  public async initialize(context: GameContext): Promise<void> {
+  public async initialize(context: GameLaunchContext): Promise<void> {
     if (context?.gameType !== 'memory'
-      || !context?.matchId
       || !context.currentUser?.id
       || !context.currentUser.displayName) {
+      throw new Error('El contexto del juego necesita gameType memory y currentUser (id y displayName).');
+    }
+
+    // Viene del Shell en tiempo de ejecución: puede traer un modo desconocido.
+    const mode: unknown = context.mode;
+
+    if (mode !== undefined && mode !== 'practice') {
+      throw new Error(`Memory no conoce el modo "${String(mode)}".`);
+    }
+
+    // Una partida normal necesita la sala; la práctica no tiene matchId.
+    if (context.mode !== 'practice' && !context.matchId) {
       throw new Error('El contexto del juego necesita matchId y currentUser (id y displayName).');
     }
 
-    this.orchestrator.configure(detail => this.emitGameFinished(detail));
+    if (context.mode !== 'practice') {
+      this.orchestrator.configure(detail => this.emitGameFinished(detail));
+    }
 
     // Los servicios son singleton: se limpia lo que pudo quedar de una partida anterior.
     this.state.reset();
@@ -68,9 +84,16 @@ export class GameModule implements IGameModule {
 
     this.joined = true;
 
+    if (this.context.mode === 'practice') {
+      // Sin sala ni servidor: el modo solo corre completo en el navegador.
+      this.orchestrator.startSolo(this.context.currentUser.displayName, true);
+      return;
+    }
+
     try {
+      // initialize() ya exigió matchId en una partida normal.
       await this.orchestrator.joinMatch(
-        this.context.matchId,
+        this.context.matchId ?? '',
         this.context.currentUser.id,
         this.context.currentUser.displayName);
     } catch (error) {
@@ -86,10 +109,14 @@ export class GameModule implements IGameModule {
   }
 
   /**
-   * Avisa al Shell que la partida terminó. El evento sube desde el elemento
-   * del juego; si todavía no hay elemento, se emite en window.
+   * Avisa al Shell que la partida terminó. Se emite en context.events, que es
+   * donde escucha el Shell, y también desde el elemento del juego (sube hasta
+   * window) para el Shell que todavía no entrega el canal.
    */
   private emitGameFinished(detail: GameFinishedDetail): void {
+    this.context?.events?.dispatchEvent(
+      new CustomEvent<GameFinishedDetail>(GAME_FINISHED_EVENT, {detail}));
+
     const target: EventTarget = this.$controller?.host ?? window;
 
     target.dispatchEvent(new CustomEvent<GameFinishedDetail>(GAME_FINISHED_EVENT, {
