@@ -84,7 +84,9 @@ Estos comandos se ejecutan desde `src/memory-microfrontend/memory-game`; no son 
 | `npm start`       | Inicia el servidor de desarrollo en el puerto `4003`. |
 | `npm run build`   | Genera el build de producción en `dist/`.             |
 | `npm run lint`    | Ejecuta las comprobaciones de ESLint y Stylelint.     |
-| `npm test`        | Ejecuta el lint y las pruebas unitarias configuradas. |
+| `npm test`        | Ejecuta el lint y todas las pruebas, con cobertura.   |
+| `npm run test:unit` | Ejecuta solo las pruebas unitarias (`test/unit`).   |
+| `npm run test:integration` | Ejecuta solo las pruebas de integración (`test/integration`). |
 | `npm run analyze` | Genera el análisis del bundle de Webpack.             |
 
 ## Funcionamiento de la partida

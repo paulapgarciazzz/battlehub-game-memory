@@ -1,10 +1,10 @@
 import {IEventAggregator} from 'aurelia';
-import {MemoryGameOrchestrator} from '../src/services/memory-game-orchestrator';
-import {MemoryHubEvents} from '../src/services/memory-hub.service';
-import {MemoryGameState} from '../src/state/memory-game-state';
-import {GameModule} from '../src/game-module';
-import {GAME_FINISHED_EVENT, type GameFinishedDetail} from '../src/game-contracts';
-import {createFakeHub, createFakeHttp, createTestContainer} from './fakes';
+import {MemoryGameOrchestrator} from '../../src/services/memory-game-orchestrator';
+import {MemoryHubEvents} from '../../src/services/memory-hub.service';
+import {MemoryGameState} from '../../src/state/memory-game-state';
+import {GameModule} from '../../src/game-module';
+import {GAME_FINISHED_EVENT, type GameFinishedDetail} from '../../src/game-contracts';
+import {createFakeHub, createFakeHttp, createTestContainer} from '../fakes';
 
 const finishedSnapshot = {matchId: 'room', phase: 'finished', startedAt: '2026-10-04T12:00:00Z',
   currentPlayerId: 'u1', turnDeadline: null, resultSaved: true,
@@ -15,8 +15,8 @@ describe('Integración de Memory con el Shell', () => {
   it('rechaza el contexto de otro juego o sin datos, sin pedir tokens', async () => {
     const container = createTestContainer(); const game = container.invoke(GameModule);
     const context = {matchId: 'room', gameType: 'memory' as const, currentUser: {id: 'u1', displayName: 'Ana'}};
-    await expect(game.initialize({...context, gameType: 'trivia'})).rejects.toThrow('matchId');
-    await expect(game.initialize({...context, currentUser: {id: 'u1', displayName: ''}})).rejects.toThrow('matchId');
+    await expect(game.initialize({...context, gameType: 'trivia'})).rejects.toThrow('gameType memory');
+    await expect(game.initialize({...context, currentUser: {id: 'u1', displayName: ''}})).rejects.toThrow('currentUser');
     await expect(game.initialize(context)).resolves.toBeUndefined();
   });
   it('restaura el marcador y las cartas desde el servidor y elimina listeners al salir', async () => {

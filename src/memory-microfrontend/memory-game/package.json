@@ -47,25 +47,8 @@
     "build": "webpack --env production",
     "build:dev": "webpack",
     "analyze": "webpack --env production --analyze",
-    "test": "jest"
-  },
-  "jest": {
-    "testMatch": [
-      "<rootDir>/test/**/*.spec.ts"
-    ],
-    "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": [
-      "./test/setup.ts"
-    ],
-    "transform": {
-      "\\.(css|sass|scss|styl|jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "jest-transform-stub",
-      "\\.(ts|html)$": "@aurelia/ts-jest"
-    },
-   "collectCoverage": true,
-"coverageReporters": ["text"],
-"collectCoverageFrom": [
-  "src/**/*.ts",
-  "!src/**/*.d.ts"
-]
+    "test": "jest --coverage",
+    "test:unit": "jest --selectProjects unit",
+    "test:integration": "jest --selectProjects integration"
   }
 }

@@ -1,8 +1,8 @@
 import { IEventAggregator } from 'aurelia';
-import { MemoryGameOrchestrator } from '../src/services/memory-game-orchestrator';
-import { MemoryHubEvents } from '../src/services/memory-hub.service';
-import { MemoryGameState } from '../src/state/memory-game-state';
-import { createFakeHub, createFakeHttp, createTestContainer, type FakeHub } from './fakes';
+import { MemoryGameOrchestrator } from '../../../src/services/memory-game-orchestrator';
+import { MemoryHubEvents } from '../../../src/services/memory-hub.service';
+import { MemoryGameState } from '../../../src/state/memory-game-state';
+import { createFakeHub, createFakeHttp, createTestContainer, type FakeHub } from '../../fakes';
 
 function setup() {
   const hub = createFakeHub();

@@ -42,7 +42,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Run frontend tests
+      - name: Run unit tests
+        run: npm run test:unit -- --ci
+
+      - name: Run integration tests
+        run: npm run test:integration -- --ci
+
+      # Vuelve a correr las dos para medir la cobertura total (unitarias + integración).
+      - name: Measure frontend coverage
         run: >
           npx jest --ci --coverage
           --coverageReporters=text
@@ -76,3 +83,6 @@ jobs:
               print("La cobertura del frontend debe ser al menos 85%.")
               sys.exit(1)
           PY
+
+      - name: Build Docker image
+        run: docker build -t battlehub-memory-frontend .

@@ -1,5 +1,5 @@
 import {DI, IEventAggregator} from 'aurelia';
-import {MemoryHubEvents, MemoryHubService} from '../src/services/memory-hub.service';
+import {MemoryHubEvents, MemoryHubService} from '../../../src/services/memory-hub.service';
 
 jest.mock('@microsoft/signalr', () => {
   const connection = {

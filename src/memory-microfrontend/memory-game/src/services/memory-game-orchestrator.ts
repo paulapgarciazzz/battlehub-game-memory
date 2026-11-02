@@ -187,7 +187,7 @@ public async joinLocalMatch(
   /**
    * Inicia una partida individual sin servidor ni temporizador de turnos.
    */
-  public startSolo(displayName: string): void {
+  public startSolo(displayName: string, embedded = false): void {
     this.clearRevealTimers();
     this.state.reset();
 
@@ -195,7 +195,8 @@ public async joinLocalMatch(
     this.state.practiceMode = false;
     this.state.practiceResolving = false;
     this.state.soloMode = true;
-    this.state.embedded = false;
+    // true cuando el Shell la abre como práctica: se muestra dentro de su área.
+    this.state.embedded = embedded;
 
     this.state.matchId = 'SOLO';
     this.state.myUserId = 'solo-1';
@@ -580,6 +581,12 @@ public async joinLocalMatch(
   }
 
   public async playAgain(): Promise<void> {
+    // La práctica dentro del Shell vuelve a empezar sin salir del juego.
+    if (this.state.soloMode && this.state.embedded) {
+      this.startSolo(this.state.myDisplayName, true);
+      return;
+    }
+
     await this.leaveMatch();
   }
 

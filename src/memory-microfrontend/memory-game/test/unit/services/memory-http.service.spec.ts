@@ -1,4 +1,4 @@
-import {MemoryHttpService} from '../src/services/memory-http.service';
+import {MemoryHttpService} from '../../../src/services/memory-http.service';
 
 describe('MemoryHttpService', () => {
   const service = new MemoryHttpService();

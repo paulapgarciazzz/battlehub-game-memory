@@ -1,20 +1,23 @@
-name: Unit Tests
+name: Build y pruebas unitarias
 
+# Segundo workflow (R-21): solo compila y corre las pruebas unitarias.
+# El workflow CI hace el resto (lint, integración, cobertura y docker build).
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  build-and-unit-tests:
-    name: Build and Unit Tests
+  backend:
+    name: Backend (.NET 10)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configure .NET 10
@@ -22,14 +25,39 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore dependencies
-        run: dotnet restore src/BattleHub.Memory.slnx
-
-      - name: Build solution
-        run: dotnet build src/BattleHub.Memory.slnx --no-restore --configuration Release
+      - name: Build backend
+        run: dotnet build src/BattleHub.Memory.slnx --configuration Release
 
       - name: Run unit tests
         run: >
           dotnet test tests/BattleHub.Memory.UnitTests/BattleHub.Memory.UnitTests.csproj
           --no-build
           --configuration Release
+
+  frontend:
+    name: Frontend (Aurelia)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/memory-microfrontend/memory-game
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/memory-microfrontend/memory-game/.nvmrc
+          cache: npm
+          cache-dependency-path: src/memory-microfrontend/memory-game/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test:unit -- --ci
