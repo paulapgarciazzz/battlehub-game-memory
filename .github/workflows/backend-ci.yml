@@ -33,9 +33,21 @@ jobs:
       - name: Build backend
         run: dotnet build src/BattleHub.Memory.slnx --no-restore --configuration Release
 
-      - name: Run backend tests
+      # Linter del backend: falla si el código no respeta el formato.
+      - name: Run backend lint
+        run: dotnet format src/BattleHub.Memory.slnx --no-restore --verify-no-changes
+
+      - name: Run unit tests
         run: >
-          dotnet test src/BattleHub.Memory.slnx
+          dotnet test tests/BattleHub.Memory.UnitTests/BattleHub.Memory.UnitTests.csproj
+          --no-build
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory src/TestResults
+
+      - name: Run integration tests
+        run: >
+          dotnet test tests/BattleHub.Memory.IntegrationTests/BattleHub.Memory.IntegrationTests.csproj
           --no-build
           --configuration Release
           --collect:"XPlat Code Coverage"

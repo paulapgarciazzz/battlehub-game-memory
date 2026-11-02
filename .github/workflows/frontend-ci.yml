@@ -76,3 +76,6 @@ jobs:
               print("La cobertura del frontend debe ser al menos 85%.")
               sys.exit(1)
           PY
+
+      - name: Build Docker image
+        run: docker build -t battlehub-memory-frontend .
