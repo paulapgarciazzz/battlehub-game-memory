@@ -49,7 +49,11 @@ services:
       - memory-sql:/var/opt/mssql
       - memory-secrets:/run/memory-secrets:ro
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$(cat /run/memory-secrets/sa_password)\" -C -Q \"SELECT 1\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$(cat /run/memory-secrets/sa_password)" -C -Q "SELECT 1" || exit 1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -120,7 +124,7 @@ services:
     depends_on:
       - api
     ports:
-      # Puerto de Memory según ADR-003: el Shell carga
+      # Puerto del microfrontend de Memory. El Shell carga
       # http://localhost:4003/remoteEntry.js.
       - "4003:80"
 

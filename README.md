@@ -2,23 +2,23 @@
 
 Microservicio del **Juego de Memoria** dentro de la plataforma BattleHub (Equipo 6).
 
-Las reglas del juego están en [ `docs/reglas-del-juego.md`](docs/reglas-del-juego.md).
+Las reglas del juego están en [`docs/reglas-del-juego.md`](docs/reglas-del-juego.md).
 
 ## Contenido de este repositorio
 
-| Ruta                                   | Qué es                                                                                                                                                         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/BattleHub.Memory.Api`             | API REST y hub SignalR propio (`/hubs/memory`), .NET 10                                                                                                        |
-| `src/BattleHub.Memory.Domain`          | Reglas del juego (`GameSession`, `Board`, `Player`)                                                                                                            |
-| `src/BattleHub.Memory.Data`            | Persistencia con EF Core y SQL Server ([ADR-001](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-001-motor-bd-juego-memoria.md)) |
-| `src/memory-microfrontend/memory-game` | Microfrontend en Aurelia 2, cargado por el Shell con Module Federation ([README](src/memory-microfrontend/memory-game/README.md))                              |
-| `tests/BattleHub.Memory.UnitTests`     | Pruebas unitarias (Moq, sin base de datos) con las carpetas de `src`: `Domain`, `Api`, `Data`                                                                  |
-| `tests/BattleHub.Memory.IntegrationTests` | Pruebas de integración con SQL Server real y la API levantada: `Api` y `Data`                                                                             |
-| `docs`                                 | Reglas del juego, API y contrato con el Shell                                                                                                                  |
-| `Dockerfile` de la API                 | Compilación y publicación de la API en una imagen multi-stage, ubicada en `src/BattleHub.Memory.Api/Dockerfile`                                                |
-| `Dockerfile` del microfrontend         | Build de producción del microfrontend servido con nginx, ubicado en `src/memory-microfrontend/memory-game/Dockerfile`                                          |
-| `docker-compose.yml`                   | Configuración para ejecutar SQL Server, la API, los datos de ejemplo y el microfrontend mediante Docker Compose                                                 |
-| `docker/sample-data`                   | Script SQL con los datos de ejemplo que carga Docker Compose                                                                                                   |
+| Ruta                                              | Qué es                                                                                                                                  |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/BattleHub.Memory.Api`                        | API REST y hub SignalR propio (`/hubs/memory`), .NET 10.                                                                                |
+| `src/BattleHub.Memory.Domain`                     | Reglas del juego (`GameSession`, `Board`, `Player`).                                                                                    |
+| `src/BattleHub.Memory.Data`                       | Persistencia con Entity Framework Core y SQL Server.                                                                                    |
+| `src/memory-microfrontend/memory-game`            | Microfrontend en Aurelia 2, cargado por el Shell mediante Module Federation ([README](src/memory-microfrontend/memory-game/README.md)). |
+| `tests/BattleHub.Memory.UnitTests`                | Pruebas unitarias (Moq, sin base de datos), organizadas en las carpetas `Domain`, `Api` y `Data`.                                       |
+| `tests/BattleHub.Memory.IntegrationTests`         | Pruebas de integración con SQL Server real y la API levantada, organizadas en `Api` y `Data`.                                           |
+| `docs`                                            | Reglas del juego, documentación de la API y contrato con el Shell.                                                                      |
+| `src/BattleHub.Memory.Api/Dockerfile`             | Compilación y publicación de la API en una imagen multi-stage.                                                                          |
+| `src/memory-microfrontend/memory-game/Dockerfile` | Build de producción del microfrontend servido con nginx.                                                                                |
+| `docker-compose.yml`                              | Configuración para ejecutar SQL Server, la API, los datos de ejemplo y el microfrontend mediante Docker Compose.                        |
+| `docker/sample-data`                              | Script SQL con los datos de ejemplo que carga Docker Compose.                                                                           |
 
 ## Requisitos
 
@@ -46,7 +46,7 @@ Para dejarlo en segundo plano, agrega `-d`. Si cambiaste el código y quieres re
 
 Docker Compose realiza las siguientes operaciones:
 
-1. Prepara la contraseña de `sa` de SQL Server (ver [Contraseña de SQL Server](#contraseña-de-sql-server)).
+1. Prepara la contraseña de `sa` de SQL Server (ver [Contraseña de SQL Server](#2-contraseña-de-sql-server)).
 2. Construye la API y el microfrontend con sus Dockerfile multi-stage.
 3. Inicia SQL Server y espera a que esté saludable mediante su comprobación de estado.
 4. Inicia la API cuando la base de datos está disponible. La API aplica las migraciones de Entity Framework Core al arrancar (`Database__MigrateOnStartup=true`) y queda saludable cuando responde en `/health`.
@@ -106,17 +106,17 @@ docker compose logs api --tail 100
 
 Si hay un error de conexión, configuración o migración, revisa los registros antes de continuar.
 
-### 4. Direcciones de acceso
+### 4. Direcciones de acceso y puertos
 
-| Servicio                        | Dirección                              |
-| ------------------------------- | -------------------------------------- |
-| Microfrontend                   | `http://localhost:4003`                |
-| Remote de Module Federation     | `http://localhost:4003/remoteEntry.js` |
-| API de Memory                   | `http://localhost:5095`                |
-| Hub SignalR                     | `http://localhost:5095/hubs/memory`    |
-| SQL Server                      | `localhost,1433`                       |
+| Servicio                    | Dirección desde la máquina             | Puerto del contenedor |
+| --------------------------- | -------------------------------------- | --------------------- |
+| Microfrontend               | `http://localhost:4003`                | `80`                  |
+| Remote de Module Federation | `http://localhost:4003/remoteEntry.js` | `80`                  |
+| API de Memory               | `http://localhost:5095`                | `8080`                |
+| Hub SignalR                 | `http://localhost:5095/hubs/memory`    | `8080`                |
+| SQL Server                  | `localhost,1433`                       | `1433`                |
 
-La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina. El microfrontend usa el puerto `80` de nginx y se publica en el `4003`.
+La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina. El microfrontend utiliza el puerto `80` de nginx y se publica en el `4003`.
 
 ### 5. Detener los servicios
 
@@ -160,7 +160,7 @@ npm ci
 npm start
 ```
 
-El microfrontend queda disponible en `http://localhost:4003`, con el remote `memoryGame`, según la configuración de Module Federation (ADR-003).
+El microfrontend queda disponible en `http://localhost:4003`, con el remote `memoryGame`, que permite que el Shell lo cargue mediante Module Federation.
 
 Se requiere Node.js 22 LTS (`>=22 <23`).
 
@@ -239,6 +239,8 @@ Este comando ejecuta las comprobaciones configuradas en el proyecto, incluidos l
 
 Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api/appsettings.json`. Los secretos y valores específicos de cada entorno deben proporcionarse por un mecanismo externo, como variables de entorno o .NET User Secrets.
 
+### Configuración de la API
+
 | Clave                              | Para qué sirve                                                                                                  |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `ConnectionStrings:MemoryDatabase` | Cadena de conexión a SQL Server; en el desarrollo local puede utilizar LocalDB con la base `BattleHubMemoryDb`. |
@@ -253,9 +255,34 @@ En la configuración de Docker Compose se utilizan variables de entorno de .NET 
 - `Database__MigrateOnStartup`
 - `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`, con `http://localhost:4000` y `http://localhost:4003` por defecto.
 
+### Variables de entorno de Docker Compose
+
+Las siguientes variables pueden configurarse en el archivo `.env`, creado a partir de `.env.example`:
+
+| Variable               | Para qué sirve                                                                                                                   | Valor predeterminado      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `MSSQL_SA_PASSWORD`    | Contraseña del usuario `sa` de SQL Server. Si no se define, se genera una contraseña y se guarda en el volumen `memory-secrets`. | Generada automáticamente. |
+| `MEMORY_CORS_SHELL`    | Origen del Shell permitido por CORS.                                                                                             | `http://localhost:4000`   |
+| `MEMORY_CORS_FRONTEND` | Origen del microfrontend permitido por CORS.                                                                                     | `http://localhost:4003`   |
+| `MEMORY_API_URL`       | Dirección de la API que utiliza el microfrontend desde el navegador.                                                             | `http://localhost:5095`   |
+
 El microfrontend de Docker Compose usa la API en `http://localhost:5095`. Para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
 
-Los valores de conexión y credenciales dependen del entorno de ejecución.
+Los valores de conexión y credenciales dependen del entorno de ejecución. No se deben guardar contraseñas ni otros secretos en el repositorio.
+
+## Decisiones técnicas
+
+### Motor de base de datos: SQL Server
+
+Se eligió **SQL Server** como motor de base de datos porque el proyecto está desarrollado sobre el ecosistema .NET y utiliza Entity Framework Core para gestionar la persistencia. Esta combinación permite centralizar el acceso a los datos, administrar la estructura mediante migraciones y mantener una integración directa entre la API y la base de datos.
+
+Además, SQL Server facilita la ejecución de pruebas de integración con una instancia real mediante Testcontainers y permite levantar un entorno reproducible para el equipo utilizando Docker Compose.
+
+### Integración del microfrontend con el Shell
+
+El juego se implementa como un microfrontend independiente en Aurelia 2. El Shell lo carga mediante **Module Federation**, utilizando el remote `memoryGame` y el archivo `remoteEntry.js`.
+
+Esta integración permite mantener separado el desarrollo del juego y su interfaz, mientras el Shell conserva la responsabilidad de gestionar la autenticación y la comunicación con Matchmaking.
 
 ## Datos de ejemplo
 
@@ -288,14 +315,18 @@ Si ya se cargaron partidas de ejemplo con otros jugadores, puede ser necesario e
 
 ## Contratos implementados
 
-A partir de [ `battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), el proyecto implementa:
+A partir de [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), el proyecto implementa:
 
 - Contrato de entrada al juego (`matchId`, `gameType`, `currentUser`) y ciclo de vida de `GameModule` (contrato 03).
 - API de resultados, historial y estadísticas (contrato 04).
-- Integración con el Shell mediante Module Federation (ADR-003).
+- Integración con el Shell mediante Module Federation.
 - Aviso de fin de partida al Shell con el evento DOM `battlehub:game-finished`. El Shell avisa a Matchmaking.
 
 Para más información sobre la API y el contrato con el Shell, consulta [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
+
+## Ejemplos de consumo de la API
+
+El documento [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md) contiene ejemplos de solicitudes HTTP con `curl` para probar los endpoints de la API, consultar resultados, historial y estadísticas, y revisar la integración con el Shell.
 
 ## Límites conocidos
 

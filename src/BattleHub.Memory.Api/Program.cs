@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Entity Framework Core (SQL Server, ADR-001)
+// Entity Framework Core con SQL Server.
 builder.Services.AddDbContext<MemoryDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("MemoryDatabase")));

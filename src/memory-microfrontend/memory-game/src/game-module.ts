@@ -23,9 +23,9 @@ import backgroundImage from './assets/backgrounds/background.webp';
  * tiene contacto con Auth0 ni con Matchmaking. Al terminar la partida emite
  * el evento DOM "battlehub:game-finished" y el Shell avisa a Matchmaking.
  *
- * El nombre del elemento lleva el prefijo del juego (ADR-003, sección 3). Con
- * @customElement explícito, las dependencias se declaran aquí y no con
- * <import> en la plantilla.
+ // El nombre del elemento utiliza el prefijo memory-game para evitar
+// conflictos con otros componentes del Shell. Con @customElement
+// explícito, las dependencias se declaran aquí.
  */
 @customElement({name: 'memory-game-module', template, dependencies: [GameView]})
 export class GameModule implements IGameModule {
