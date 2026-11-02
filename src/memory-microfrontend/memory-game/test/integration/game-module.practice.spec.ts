@@ -1,10 +1,10 @@
 import {IEventAggregator} from 'aurelia';
-import {GameModule} from '../src/game-module';
-import {GAME_FINISHED_EVENT, type GameFinishedDetail, type PracticeContext} from '../src/game-contracts';
-import {MemoryGameOrchestrator} from '../src/services/memory-game-orchestrator';
-import {MemoryHubEvents} from '../src/services/memory-hub.service';
-import {MemoryGameState} from '../src/state/memory-game-state';
-import {createFakeHub, createFakeHttp, createTestContainer} from './fakes';
+import {GameModule} from '../../src/game-module';
+import {GAME_FINISHED_EVENT, type GameFinishedDetail, type PracticeContext} from '../../src/game-contracts';
+import {MemoryGameOrchestrator} from '../../src/services/memory-game-orchestrator';
+import {MemoryHubEvents} from '../../src/services/memory-hub.service';
+import {MemoryGameState} from '../../src/state/memory-game-state';
+import {createFakeHub, createFakeHttp, createTestContainer} from '../fakes';
 
 const practice = (): PracticeContext => ({
   mode: 'practice', gameType: 'memory', currentUser: {id: 'u1', displayName: 'Ana'}, events: new EventTarget()

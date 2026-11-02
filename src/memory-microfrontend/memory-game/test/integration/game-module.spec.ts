@@ -1,10 +1,10 @@
 import {IEventAggregator} from 'aurelia';
-import {MemoryGameOrchestrator} from '../src/services/memory-game-orchestrator';
-import {MemoryHubEvents} from '../src/services/memory-hub.service';
-import {MemoryGameState} from '../src/state/memory-game-state';
-import {GameModule} from '../src/game-module';
-import {GAME_FINISHED_EVENT, type GameFinishedDetail} from '../src/game-contracts';
-import {createFakeHub, createFakeHttp, createTestContainer} from './fakes';
+import {MemoryGameOrchestrator} from '../../src/services/memory-game-orchestrator';
+import {MemoryHubEvents} from '../../src/services/memory-hub.service';
+import {MemoryGameState} from '../../src/state/memory-game-state';
+import {GameModule} from '../../src/game-module';
+import {GAME_FINISHED_EVENT, type GameFinishedDetail} from '../../src/game-contracts';
+import {createFakeHub, createFakeHttp, createTestContainer} from '../fakes';
 
 const finishedSnapshot = {matchId: 'room', phase: 'finished', startedAt: '2026-10-04T12:00:00Z',
   currentPlayerId: 'u1', turnDeadline: null, resultSaved: true,

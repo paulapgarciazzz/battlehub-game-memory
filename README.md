@@ -234,7 +234,12 @@ cd src/memory-microfrontend/memory-game
 npm test
 ```
 
-Este comando ejecuta las comprobaciones configuradas en el proyecto, incluidos lint y Jest si están definidos en los scripts de `package.json`.
+`npm test` ejecuta el lint y todas las pruebas, y muestra la cobertura. Las pruebas están separadas igual que en el backend, y cada carpeta sigue la estructura de `src/`:
+
+| Carpeta             | Comando                    | Qué prueba                                                  |
+| ------------------- | -------------------------- | ----------------------------------------------------------- |
+| `test/unit`         | `npm run test:unit`        | Cada componente y servicio por separado, con fakes.         |
+| `test/integration`  | `npm run test:integration` | El `GameModule` completo, como lo usa el Shell.             |
 
 ## Configuración
 
