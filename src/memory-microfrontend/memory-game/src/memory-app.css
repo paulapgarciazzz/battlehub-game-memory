@@ -11,11 +11,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  /* Centrado en el alto, para quedar dentro del paño de la mesa. */
+  justify-content: safe center;
+
+  /*
+   * Alto de la ventana que no queda para las cartas: indicador de turno,
+   * márgenes y borde de la mesa. El tablero reparte el resto en 4 filas.
+   */
+  --memory-game-reserved-height: 15rem;
 }
 
-/* Dentro del Shell el juego ocupa solo el área asignada (contrato 03, sección 7). */
+/*
+ * Dentro del Shell el juego ocupa el área que le da el Shell (contrato 03,
+ * sección 7), sin exigir un alto mínimo: si lo exigiera, la página tendría
+ * scroll a 1366x768. Las cartas descuentan además el encabezado y la barra
+ * del Shell, que también ocupan parte de la ventana.
+ */
 .memory-game--embedded {
-  min-height: 700px;
+  height: 100%;
+  min-height: 0;
+
+  --memory-game-reserved-height: 22.5rem;
 }
 
 .memory-game__waiting {
