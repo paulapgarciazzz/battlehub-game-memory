@@ -8,8 +8,8 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const { ModuleFederationPlugin } = webpack.container;
 const sharedDeps = require('./mf-shared');
 
-// Puerto local de Memory según ADR-003 §2. El backend solo acepta CORS desde
-// este origen (modo independiente) y desde el Shell (http://localhost:4000).
+// Puerto local de Memory. El backend acepta CORS desde este origen
+// (modo independiente) y desde el Shell (http://localhost:4000).
 const DEV_PORT = 4003;
 
 module.exports = function (env, { analyze }) {

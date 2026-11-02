@@ -6,7 +6,7 @@
     "selector-class-pattern": [
       "^memory-game(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
       {
-        "message": "Las clases deben empezar con el prefijo memory-game (ADR-003 §8) y pueden usar BEM: memory-game-bloque__elemento--modificador"
+        "message": "Las clases deben empezar con el prefijo memory-game y pueden usar BEM: memory-game-bloque__elemento--modificador"
       }
     ]
   }
