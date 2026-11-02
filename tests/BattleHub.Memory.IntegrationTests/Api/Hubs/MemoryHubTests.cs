@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 namespace BattleHub.Memory.IntegrationTests.Api.Hubs;
+
 [Collection(ApiDatabaseCollection.Name)]
 [Trait("Category", "Integration")]
 public sealed class MemoryHubTests(MemoryApiFactory factory)

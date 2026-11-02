@@ -68,12 +68,12 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
             HttpStatusCode.BadRequest,
             (await player.PostAsJsonAsync(
                 "/api/games/memory/results",
-                new {matchId = " "})).StatusCode);
+                new { matchId = " " })).StatusCode);
         Assert.Equal(
             HttpStatusCode.NotFound,
             (await player.PostAsJsonAsync(
                 "/api/games/memory/results",
-                new {matchId = "missing-" + Guid.NewGuid().ToString("N")})).StatusCode);
+                new { matchId = "missing-" + Guid.NewGuid().ToString("N") })).StatusCode);
 
         var games = factory.Services.GetRequiredService<MemoryGameService>();
         var unfinishedId = "unfinished-" + Guid.NewGuid().ToString("N");
@@ -85,7 +85,7 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
             HttpStatusCode.BadRequest,
             (await player.PostAsJsonAsync(
                 "/api/games/memory/results",
-                new {matchId = unfinishedId})).StatusCode);
+                new { matchId = unfinishedId })).StatusCode);
 
         var matchId = "save-" + Guid.NewGuid().ToString("N");
         var session = CreateSession(matchId);
@@ -98,14 +98,14 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
 
         var saved = await player.PostAsJsonAsync(
             "/api/games/memory/results",
-            new {matchId});
+            new { matchId });
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         Assert.Contains("guardado correctamente", await saved.Content.ReadAsStringAsync());
 
         games.RemoveSession(matchId);
         var alreadySaved = await player.PostAsJsonAsync(
             "/api/games/memory/results",
-            new {matchId});
+            new { matchId });
         Assert.Equal(HttpStatusCode.OK, alreadySaved.StatusCode);
         Assert.Contains("ya estaba guardado", await alreadySaved.Content.ReadAsStringAsync());
     }
