@@ -59,6 +59,5 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      # Deja fuera las pruebas de integración del frontend.
       - name: Run unit tests
-        run: npx jest --ci --coverage=false --testPathIgnorePatterns=integration
+        run: npm run test:unit -- --ci
