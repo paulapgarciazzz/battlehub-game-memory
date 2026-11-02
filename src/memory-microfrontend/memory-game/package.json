@@ -39,7 +39,7 @@
     "webpack-dev-server": "^5.2.0"
   },
   "scripts": {
-    "lint:js": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+  "lint:js": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings 0",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint": "npm run lint:js && npm run lint:css",
     "pretest": "npm run lint",
