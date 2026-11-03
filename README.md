@@ -371,18 +371,25 @@ Los valores predeterminados de los orígenes son `http://localhost:4000` y `http
 
 ### Configuración de la API
 
-La configuración predeterminada se encuentra en:
+La cadena de conexión y los orígenes de CORS no están en el código ni en `appsettings.json`: la API los recibe solo por variables de entorno y, si falta alguno, no arranca y muestra qué variable configurar.
 
-```text
-src/BattleHub.Memory.Api/appsettings.json
-```
+| Variable                                    | Descripción                                  |
+| ------------------------------------------- | -------------------------------------------- |
+| `ConnectionStrings__MemoryDatabase`         | Cadena de conexión a SQL Server.             |
+| `Cors__Origins__0`, `Cors__Origins__1`, ... | Orígenes permitidos (Shell y microfrontend). |
 
-Entre las principales opciones se encuentran:
+De dónde sale cada valor:
+
+- **Docker Compose:** el servicio `api` arma la cadena al arrancar, con la contraseña del volumen `memory-secrets`, y toma los orígenes de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND`.
+- **Visual Studio (`http` o `https`):** el perfil de `Properties/launchSettings.json` define las variables, con la base `BattleHubMemoryDb` en LocalDB y los orígenes `http://localhost:4000` y `http://localhost:4003`.
+- **Pruebas de integración:** `MemoryApiFactory` usa la conexión de Testcontainers.
+
+Para aplicar migraciones con `dotnet ef database update` fuera de Visual Studio, definir antes `ConnectionStrings__MemoryDatabase` o pasar `--connection "<cadena>"`.
+
+Las demás opciones tienen valores predeterminados en `src/BattleHub.Memory.Api/appsettings.json`:
 
 | Configuración                           | Descripción                                              |
 | --------------------------------------- | -------------------------------------------------------- |
-| `ConnectionStrings:MemoryDatabase`      | Cadena de conexión a SQL Server.                         |
-| `Cors:Origins`                          | Orígenes permitidos para las solicitudes.                |
 | `Database:MigrateOnStartup`             | Habilita la aplicación de migraciones al iniciar.        |
 | `GameTiming:TurnTimeoutSeconds`         | Duración del turno de cada jugador.                      |
 | `GameTiming:PreviewSeconds`             | Tiempo de visualización inicial de las cartas.           |

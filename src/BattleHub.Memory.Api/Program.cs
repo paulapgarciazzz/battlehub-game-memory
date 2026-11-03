@@ -8,10 +8,18 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Entity Framework Core con SQL Server.
+// Entity Framework Core con SQL Server. La cadena sale solo de la
+// configuración externa (variable ConnectionStrings__MemoryDatabase).
+var connectionString = builder.Configuration.GetConnectionString("MemoryDatabase");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Configurar la variable ConnectionStrings__MemoryDatabase con la cadena de conexión a SQL Server.");
+}
+
 builder.Services.AddDbContext<MemoryDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("MemoryDatabase")));
+    options.UseSqlServer(connectionString));
 
 // Servicios de la aplicación
 builder.Services.AddScoped<IGameResultService, GameResultService>();

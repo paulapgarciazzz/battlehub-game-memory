@@ -57,6 +57,10 @@ public sealed class MemoryApiFactory : WebApplicationFactory<Program>, IAsyncLif
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        // Program.cs exige estos valores, que ya no vienen en appsettings.json.
+        builder.UseSetting("ConnectionStrings:MemoryDatabase", connectionString);
+        builder.UseSetting("Cors:Origins:0", "http://localhost:4000");
+        builder.UseSetting("Cors:Origins:1", "http://localhost:4003");
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IHostedService>();
