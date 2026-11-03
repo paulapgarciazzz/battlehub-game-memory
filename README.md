@@ -1,112 +1,141 @@
-# battlehub-game-memory
+# BattleHub - Juego de Memoria
 
-Microservicio del **Juego de Memoria** dentro de la plataforma BattleHub (Equipo 6).
+Microservicio del **Juego de Memoria** de la plataforma BattleHub, desarrollado por el Equipo 6 como parte de la Etapa 2 del proyecto final.
 
-Las reglas del juego están en [`docs/reglas-del-juego.md`](docs/reglas-del-juego.md).
+El proyecto implementa un juego de memoria multijugador mediante una API REST, comunicación en tiempo real con SignalR y un microfrontend desarrollado en Aurelia 2. Su integración con la plataforma se realiza mediante el Shell de BattleHub.
 
-## Contenido de este repositorio
+Las reglas del juego se encuentran en [`docs/reglas-del-juego.md`](docs/reglas-del-juego.md).
 
-| Ruta                                              | Qué es                                                                                                                                  |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/BattleHub.Memory.Api`                        | API REST y hub SignalR propio (`/hubs/memory`), .NET 10.                                                                                |
-| `src/BattleHub.Memory.Domain`                     | Reglas del juego (`GameSession`, `Board`, `Player`).                                                                                    |
-| `src/BattleHub.Memory.Data`                       | Persistencia con Entity Framework Core y SQL Server.                                                                                    |
-| `src/memory-microfrontend/memory-game`            | Microfrontend en Aurelia 2, cargado por el Shell mediante Module Federation ([README](src/memory-microfrontend/memory-game/README.md)). |
-| `tests/BattleHub.Memory.UnitTests`                | Pruebas unitarias (Moq, sin base de datos), organizadas en las carpetas `Domain`, `Api` y `Data`.                                       |
-| `tests/BattleHub.Memory.IntegrationTests`         | Pruebas de integración con SQL Server real y la API levantada, organizadas en `Api` y `Data`.                                           |
-| `docs`                                            | Reglas del juego, documentación de la API y contrato con el Shell.                                                                      |
-| `src/BattleHub.Memory.Api/Dockerfile`             | Compilación y publicación de la API en una imagen multi-stage.                                                                          |
-| `src/memory-microfrontend/memory-game/Dockerfile` | Build de producción del microfrontend servido con nginx.                                                                                |
-| `docker-compose.yml`                              | Configuración para ejecutar SQL Server, la API, los datos de ejemplo y el microfrontend mediante Docker Compose.                        |
-| `docker/sample-data`                              | Script SQL con los datos de ejemplo que carga Docker Compose.                                                                           |
+## Contenido del repositorio
 
-## Requisitos
+| Ruta                                      | Descripción                                                                             |
+| ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| `src/BattleHub.Memory.Api`                | API REST y hub SignalR (`/hubs/memory`), desarrollado en .NET 10.                       |
+| `src/BattleHub.Memory.Domain`             | Entidades y reglas principales del juego: `GameSession`, `Board` y `Player`.            |
+| `src/BattleHub.Memory.Data`               | Persistencia mediante Entity Framework Core y SQL Server.                               |
+| `src/memory-microfrontend/memory-game`    | Microfrontend en Aurelia 2, integrado con el Shell mediante Module Federation.          |
+| `tests/BattleHub.Memory.UnitTests`        | Pruebas unitarias con Moq, organizadas en carpetas `Domain`, `Api` y `Data`.            |
+| `tests/BattleHub.Memory.IntegrationTests` | Pruebas de integración con SQL Server y la API.                                         |
+| `docs`                                    | Reglas del juego, documentación de la API y contrato de integración con el Shell.       |
+| `docker-compose.yml`                      | Configuración para iniciar SQL Server, la API, los datos de ejemplo y el microfrontend. |
+| `docker/sample-data`                      | Script SQL para cargar datos de ejemplo.                                                |
 
-Para ejecutar el proyecto con Docker solo se necesita Docker Desktop con Docker Compose.
+## Tecnologías utilizadas
 
-Para ejecutar el proyecto directamente en la máquina:
+| Tecnología              | Uso                                               |
+| ----------------------- | ------------------------------------------------- |
+| .NET 10                 | Desarrollo del backend.                           |
+| C#                      | Lenguaje del backend.                             |
+| Aurelia 2               | Desarrollo del microfrontend.                     |
+| TypeScript              | Lenguaje del frontend.                            |
+| Node.js 22 LTS          | Entorno de ejecución y herramientas del frontend. |
+| SQL Server              | Motor de base de datos.                           |
+| Entity Framework Core   | Acceso a datos y migraciones.                     |
+| SignalR                 | Comunicación en tiempo real.                      |
+| Module Federation       | Integración del microfrontend con el Shell.       |
+| Docker y Docker Compose | Contenedores y ejecución del entorno.             |
+| GitHub Actions          | Integración continua y automatización de pruebas. |
+
+## Requisitos previos
+
+Para ejecutar el proyecto se necesita:
+
+- Docker Desktop con Docker Compose.
+- Acceso al repositorio.
+- Conexión a Internet para descargar las imágenes y dependencias necesarias durante la construcción inicial.
+
+Para trabajar directamente en el código también se utilizan:
 
 - .NET 10 SDK.
-- Node.js 22 LTS (`>=22 <23`, ver `.nvmrc`).
-- SQL Server LocalDB u otra instancia compatible de SQL Server.
+- Node.js 22 LTS (`>=22 <23`).
+- Visual Studio 2026 Community.
+- Una solución en formato `.slnx`.
 
-## Cómo ejecutar el proyecto con Docker Compose
+## Ejecución del proyecto con Docker Compose
 
-Docker Compose inicia SQL Server, la API y el microfrontend sin instalar .NET SDK, Node.js ni SQL Server en la máquina. No hace falta ningún paso previo: en un clon limpio basta con un comando.
+Docker Compose permite iniciar el entorno completo sin instalar .NET, Node.js ni SQL Server directamente en la máquina.
 
 ### 1. Iniciar los servicios
 
-Ejecuta desde la raíz del repositorio:
+Desde la raíz del repositorio, ejecutar:
 
 ```powershell
 docker compose up
 ```
 
-Para dejarlo en segundo plano, agrega `-d`. Si cambiaste el código y quieres reconstruir las imágenes, agrega `--build`.
+Para reconstruir las imágenes antes de iniciar los servicios:
+
+```powershell
+docker compose up --build
+```
+
+Para ejecutarlos en segundo plano:
+
+```powershell
+docker compose up -d
+```
 
 Docker Compose realiza las siguientes operaciones:
 
-1. Prepara la contraseña de `sa` de SQL Server (ver [Contraseña de SQL Server](#2-contraseña-de-sql-server)).
-2. Construye la API y el microfrontend con sus Dockerfile multi-stage.
-3. Inicia SQL Server y espera a que esté saludable mediante su comprobación de estado.
-4. Inicia la API cuando la base de datos está disponible. La API aplica las migraciones de Entity Framework Core al arrancar (`Database__MigrateOnStartup=true`) y queda saludable cuando responde en `/health`.
-5. Cuando la API está saludable, el servicio `sample-data` carga los datos de ejemplo con `sqlcmd` y el script `docker/sample-data/datos-ejemplo.sql`, y termina (ver [Datos de ejemplo](#datos-de-ejemplo)).
-6. Sirve el build de producción del microfrontend con nginx.
+1. Prepara la contraseña de SQL Server.
+2. Construye las imágenes de la API y del microfrontend.
+3. Inicia SQL Server y espera a que esté disponible.
+4. Inicia la API y aplica las migraciones de Entity Framework Core.
+5. Espera a que la API esté saludable.
+6. Ejecuta el servicio independiente `sample-data`, que carga los datos de ejemplo.
+7. Inicia el microfrontend mediante nginx.
 
-Las imágenes finales contienen solo lo necesario para ejecutar cada servicio, no el SDK de .NET, Node.js ni el código fuente completo.
+El servicio `sample-data` es independiente de la API y de su mecanismo de seed. Ejecuta el script `docker/sample-data/datos-ejemplo.sql` después de que la API haya aplicado las migraciones.
 
 ### 2. Contraseña de SQL Server
 
-La contraseña no está escrita en ningún archivo del repositorio:
+La contraseña de SQL Server no está escrita directamente en el código fuente.
 
-- Si no existe `.env`, el servicio `sql-password` genera una contraseña al azar la primera vez y la guarda en el volumen `memory-secrets`. SQL Server y la API la leen de ahí, y se reutiliza en cada `docker compose up` hasta que se borren los volúmenes.
-- Si quieres usar una propia, copia `.env.example` a `.env` y define `MSSQL_SA_PASSWORD`. Debe cumplir los requisitos de complejidad de SQL Server y no llevar `;`.
+Se puede utilizar una contraseña generada automáticamente, almacenada en el volumen `memory-secrets`, o definir una propia mediante el archivo `.env`.
 
-Para consultar la contraseña generada (por ejemplo, para conectarte desde SQL Server Management Studio):
+Para utilizar una contraseña propia:
+
+1. Copiar `.env.example` y crear un archivo `.env`.
+2. Definir la variable `MSSQL_SA_PASSWORD`.
+3. Verificar que la contraseña cumpla los requisitos de complejidad de SQL Server y que no contenga `;`.
+
+Para consultar la contraseña generada:
 
 ```powershell
 docker compose exec sql cat /run/memory-secrets/sa_password
 ```
 
-**Importante:** SQL Server solo toma la contraseña al crear su volumen. Si cambias `MSSQL_SA_PASSWORD` con la base ya creada, ejecuta `docker compose down -v` para empezar de cero. El archivo `.env` no se sube al repositorio.
+**Importante:** el archivo `.env` no debe subirse al repositorio. Si se cambia la contraseña con el volumen de SQL Server ya creado, será necesario recrear los volúmenes.
 
-### 3. Comprobar el estado de los servicios
+### 3. Comprobar los servicios
 
-Para consultar el estado de los contenedores:
+Consultar el estado de los contenedores:
 
 ```powershell
 docker compose ps
 ```
 
-Para consultar los registros de la API:
+Consultar los registros de la API:
 
 ```powershell
 docker compose logs api
 ```
 
-Para consultar los registros de SQL Server:
+Consultar los registros de SQL Server:
 
 ```powershell
 docker compose logs sql
 ```
 
-Para consultar los registros de la carga de datos de ejemplo:
+Consultar los registros de la carga de datos:
 
 ```powershell
 docker compose logs sample-data
 ```
 
-El contenedor `sample-data` aparece como `exited (0)` cuando la carga terminó bien.
+El contenedor `sample-data` puede aparecer como `exited (0)` cuando la carga termina correctamente.
 
-Para revisar los últimos registros de la API:
-
-```powershell
-docker compose logs api --tail 100
-```
-
-Si hay un error de conexión, configuración o migración, revisa los registros antes de continuar.
-
-### 4. Direcciones de acceso y puertos
+### 4. Direcciones y puertos
 
 | Servicio                    | Dirección desde la máquina             | Puerto del contenedor |
 | --------------------------- | -------------------------------------- | --------------------- |
@@ -116,7 +145,7 @@ Si hay un error de conexión, configuración o migración, revisa los registros 
 | Hub SignalR                 | `http://localhost:5095/hubs/memory`    | `8080`                |
 | SQL Server                  | `localhost,1433`                       | `1433`                |
 
-La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina. El microfrontend utiliza el puerto `80` de nginx y se publica en el `4003`.
+La API utiliza el puerto `8080` dentro del contenedor y se publica en el puerto `5095` de la máquina. El microfrontend utiliza nginx en el puerto `80` y se publica en el puerto `4003`.
 
 ### 5. Detener los servicios
 
@@ -126,239 +155,289 @@ Para detener los contenedores sin eliminar los datos persistentes:
 docker compose down
 ```
 
-Para detenerlos y eliminar también los volúmenes (base de datos y contraseña generada):
+Para detenerlos y eliminar también los volúmenes:
 
 ```powershell
 docker compose down -v
 ```
 
-Después se puede volver a levantar con `docker compose up`: se genera una contraseña nueva, se crea la base, se aplican las migraciones y se cargan los datos de ejemplo.
+**Advertencia:** `docker compose down -v` elimina los volúmenes del proyecto, incluyendo la base de datos y la contraseña generada. También se pierden las partidas guardadas.
 
-**Advertencia:** `docker compose down -v` elimina los volúmenes de este proyecto y, con ellos, las partidas guardadas. Úsalo solamente cuando quieras borrar esa información.
+## Integración con el Shell de BattleHub
 
-## Ejecución local sin Docker
+El microfrontend se integra con el Shell mediante **Module Federation**, utilizando el remote `memoryGame` y el archivo `remoteEntry.js`.
 
-También es posible ejecutar la API directamente con .NET durante el desarrollo. En este caso se necesita una instancia de SQL Server accesible desde la máquina.
+El Shell es responsable de la autenticación y de proporcionar al juego la información necesaria para iniciar una partida, incluyendo:
 
-Desde la raíz del repositorio:
+- `matchId`: identificador de la partida.
+- `currentUser`: información del usuario actual.
 
-```powershell
-dotnet run --project src/BattleHub.Memory.Api
+El juego no tiene contacto directo con Auth0 ni con Matchmaking.
+
+### Flujo de finalización de partida
+
+Cuando termina una partida, el microfrontend emite el evento `battlehub:game-finished` mediante `context.events`.
+
+El Shell escucha este evento y notifica a Matchmaking. Por lo tanto, el juego no realiza llamadas directas a Matchmaking.
+
+El contrato de integración se encuentra documentado en [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
+
+### Modo práctica
+
+El modo práctica se encuentra integrado con el Shell y permite iniciar una partida individual sin crear una sala de Matchmaking ni registrar resultados.
+
+Se identifica mediante `mode: "practice"` y no utiliza la API para guardar la partida ni notificar su finalización.
+
+### Modo playground
+
+El requisito de playground establece que el juego debe poder ejecutarse independientemente del Shell, Auth0 y otros servicios.
+
+**La forma de iniciar este modo debe documentarse de acuerdo con la implementación disponible en el repositorio.** No debe confundirse con el modo práctica integrado en el Shell.
+
+## Persistencia y base de datos
+
+El proyecto utiliza exclusivamente **SQL Server** como motor de base de datos.
+
+La persistencia se administra mediante Entity Framework Core, utilizando migraciones incrementales para mantener la estructura de la base de datos.
+
+Las entidades principales incluyen:
+
+- `GameSession`: información de las partidas.
+- `Board`: información del tablero.
+- `Player`: información de los jugadores.
+
+La configuración de conexión se administra mediante variables de entorno y configuración externa.
+
+### Datos de ejemplo
+
+Docker Compose incluye un servicio independiente llamado `sample-data`, encargado de cargar datos de ejemplo.
+
+Se incluyen 18 partidas terminadas, correspondientes a los últimos 30 días, con cuatro jugadores de demostración:
+
+- Ana (`demo|ana`).
+- Bruno (`demo|bruno`).
+- Carla (`demo|carla`).
+- Diego (`demo|diego`).
+
+El script utilizado es:
+
+```text
+docker/sample-data/datos-ejemplo.sql
 ```
 
-La dirección y el perfil de ejecución pueden depender de la configuración local de `launchSettings.json`.
+La carga es idempotente: si las partidas ya existen, no se insertan nuevamente.
 
-La configuración de conexión a SQL Server debe coincidir con la instancia disponible. Para aplicar las migraciones al arrancar, configura `Database:MigrateOnStartup` según el mecanismo admitido por la aplicación.
-
-## Cómo ejecutar el microfrontend sin Docker
-
-`docker compose up` ya sirve el microfrontend en el puerto `4003`. Para desarrollarlo con recarga automática, detén ese servicio (`docker compose stop frontend`) y en otra terminal ejecuta:
-
-```powershell
-cd src/memory-microfrontend/memory-game
-npm ci
-npm start
-```
-
-El microfrontend queda disponible en `http://localhost:4003`, con el remote `memoryGame`, que permite que el Shell lo cargue mediante Module Federation.
-
-Se requiere Node.js 22 LTS (`>=22 <23`).
-
-## Cómo jugar
-
-Las partidas competitivas se juegan **desde el Shell** (`http://localhost:4000`). El Shell inicia sesión con Auth0, obtiene la sala de Matchmaking y le entrega al juego el `matchId` y el `currentUser`.
-
-El juego **no tiene contacto con Auth0 ni con Matchmaking**:
-
-- La API y el hub no piden token. El jugador es el `currentUser` que entrega el Shell.
-- Cuando la partida termina, el microfrontend emite `battlehub:game-finished` en `context.events`, el canal que le entrega el Shell. El Shell lo escucha y avisa a Matchmaking. El juego nunca llama a Matchmaking.
-- Desde el botón **Practicar** del Shell se abre la **práctica** (`mode: "practice"`): una partida de un jugador, sin sala, que corre en el navegador sin guardar nada ni avisar el fin.
-
-El detalle del evento está en [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
+El servicio se ejecuta después de que la API haya aplicado las migraciones, pero no depende del mecanismo de seed de la aplicación.
 
 ## Pruebas
 
-### Ejecutar las pruebas de .NET
+El proyecto separa las pruebas unitarias de las pruebas de integración.
 
-Desde la raíz del repositorio:
+### Pruebas unitarias
 
-```powershell
-dotnet test src/BattleHub.Memory.slnx
+Se encuentran en:
+
+```text
+tests/BattleHub.Memory.UnitTests
 ```
 
-Las pruebas están en dos proyectos separados, con las mismas carpetas que `src`:
+Utilizan Moq para reemplazar dependencias y probar componentes de manera aislada, sin requerir una base de datos real.
 
-- `tests/BattleHub.Memory.UnitTests`: pruebas unitarias. Las dependencias se reemplazan con Moq y no necesitan base de datos.
-- `tests/BattleHub.Memory.IntegrationTests`: pruebas de integración con SQL Server real y la API levantada en memoria.
-
-Para ejecutar solamente las pruebas unitarias:
+Para ejecutarlas:
 
 ```powershell
 dotnet test tests/BattleHub.Memory.UnitTests
 ```
 
-Para ejecutar solamente las de integración:
+### Pruebas de integración
+
+Se encuentran en:
+
+```text
+tests/BattleHub.Memory.IntegrationTests
+```
+
+Comprueban la interacción entre los componentes utilizando SQL Server y la API.
+
+En GitHub Actions se utiliza SQL Server mediante Testcontainers, de acuerdo con la configuración de las pruebas.
+
+Para ejecutarlas:
 
 ```powershell
 dotnet test tests/BattleHub.Memory.IntegrationTests
 ```
 
-### Pruebas de integración
-
-Las pruebas de integración necesitan una instancia de SQL Server.
-
-- **En CI (GitHub Actions):** se utiliza SQL Server mediante Testcontainers, de acuerdo con la configuración de las pruebas.
-- **En la máquina local con LocalDB:** configura la variable de conexión para las pruebas y reinicia la terminal si utilizas `setx`.
-
-```powershell
-setx MEMORY_TEST_CONNECTION "Server=(localdb)\mssqllocaldb;Integrated Security=true;TrustServerCertificate=true"
-```
-
-- **Con Docker:** si quieres utilizar el SQL Server del archivo `docker-compose.yml`, define la variable de conexión en la terminal actual. La contraseña se lee del contenedor, así que no hace falta escribirla:
-
-```powershell
-$sa = docker compose exec sql cat /run/memory-secrets/sa_password
-$env:MEMORY_TEST_CONNECTION = "Server=localhost,1433;User Id=sa;Password=$sa;TrustServerCertificate=True"
-```
-
-Sin esa variable, las pruebas pueden crear su propio contenedor de SQL Server mediante Testcontainers, siempre que Docker esté disponible y la configuración de pruebas lo permita.
-
-Cada ejecución de las pruebas de integración crea su propia base de datos de pruebas, con un nombre similar a `BattleHubMemoryTests_...`, y la elimina al terminar. No debería modificar `BattleHubMemoryDb`.
-
 ### Pruebas del frontend
 
-Para ejecutar las pruebas del microfrontend:
+Desde la carpeta del microfrontend:
 
 ```powershell
 cd src/memory-microfrontend/memory-game
+npm ci
 npm test
 ```
 
-`npm test` ejecuta el lint y todas las pruebas, y muestra la cobertura. Las pruebas están separadas igual que en el backend, y cada carpeta sigue la estructura de `src/`:
+Las pruebas se organizan en:
 
-| Carpeta             | Comando                    | Qué prueba                                                  |
-| ------------------- | -------------------------- | ----------------------------------------------------------- |
-| `test/unit`         | `npm run test:unit`        | Cada componente y servicio por separado, con fakes.         |
-| `test/integration`  | `npm run test:integration` | El `GameModule` completo, como lo usa el Shell.             |
+| Carpeta            | Propósito                                                       |
+| ------------------ | --------------------------------------------------------------- |
+| `test/unit`        | Pruebas individuales de componentes y servicios mediante fakes. |
+| `test/integration` | Pruebas de integración del `GameModule`.                        |
 
-## Configuración
+También se dispone de comandos independientes:
 
-Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api/appsettings.json`. Los secretos y valores específicos de cada entorno deben proporcionarse por un mecanismo externo, como variables de entorno o .NET User Secrets.
+```powershell
+npm run test:unit
+npm run test:integration
+```
+
+Para ejecutar las pruebas de .NET de la solución:
+
+```powershell
+dotnet test src/BattleHub.Memory.slnx
+```
+
+## Calidad de código e integración continua
+
+El repositorio utiliza GitHub Actions para automatizar la validación del código.
+
+Los flujos de trabajo contemplan:
+
+- Restauración e instalación de dependencias.
+- Construcción del backend y frontend.
+- Ejecución de linters.
+- Pruebas unitarias y de integración.
+- Medición de cobertura.
+- Construcción de imágenes Docker.
+- Validación independiente de los componentes cuando corresponda.
+
+El workflow completo se denomina `CI`. También existe un flujo adicional para ejecutar compilación y pruebas unitarias.
+
+Los workflows de backend y frontend se ejecutan de manera independiente cuando hay cambios en sus respectivas rutas, mediante filtros de rutas (`paths`).
+
+La cobertura mínima exigida es del 85 %. Los resultados se publican automáticamente como comentarios en los Pull Requests y el CI falla cuando no se alcanza el mínimo establecido.
+
+### Cobertura alcanzada
+
+Los resultados registrados en las ejecuciones de GitHub Actions son:
+
+| Componente | Cobertura |
+| ---------- | --------: |
+| Backend    |      86 % |
+| Frontend   |   89,56 % |
+
+Estos porcentajes corresponden a las ejecuciones de cobertura registradas en los Pull Requests del proyecto.
+
+## Seguridad y configuración
+
+La autenticación se administra desde el Shell de BattleHub mediante Auth0. El Shell obtiene la información del usuario y la proporciona al microfrontend.
+
+El juego no se conecta directamente a Auth0. La API y el hub SignalR no solicitan ni validan tokens de Auth0; utilizan la identidad proporcionada por el Shell.
+
+Esta separación permite mantener la autenticación fuera del componente del juego, pero también implica que la API confía en la información de identidad que recibe y no realiza por sí misma la validación de permisos del usuario.
+
+Las credenciales y los valores configurables deben mantenerse fuera del código fuente y proporcionarse mediante variables de entorno o archivos locales excluidos del control de versiones.
+
+El archivo `.env.example` sirve como referencia para configurar el entorno. Los archivos `.env` no deben subirse al repositorio.
+
+### Configuración de Docker Compose
+
+| Variable               | Descripción                                    |
+| ---------------------- | ---------------------------------------------- |
+| `MSSQL_SA_PASSWORD`    | Contraseña del usuario `sa` de SQL Server.     |
+| `MEMORY_CORS_SHELL`    | Origen del Shell permitido por CORS.           |
+| `MEMORY_CORS_FRONTEND` | Origen del microfrontend permitido por CORS.   |
+| `MEMORY_API_URL`       | Dirección de la API utilizada por el frontend. |
+
+Los valores predeterminados de los orígenes son `http://localhost:4000` y `http://localhost:4003`, respectivamente.
 
 ### Configuración de la API
 
-| Clave                              | Para qué sirve                                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ConnectionStrings:MemoryDatabase` | Cadena de conexión a SQL Server; en el desarrollo local puede utilizar LocalDB con la base `BattleHubMemoryDb`. |
-| `Cors:Origins`                     | Orígenes permitidos (Shell y microfrontend). Obligatorio: la API no arranca si está vacío.                      |
-| `Database:MigrateOnStartup`        | Indica si la API aplica las migraciones al arrancar. En Docker Compose está habilitado.                         |
-| `SampleData:Enabled`               | Indica si la API carga partidas de ejemplo al arrancar. Solo se usa con `dotnet run`, no en Docker Compose.     |
-| `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo de `SampleData:Enabled`.                   |
-| `GameTiming:TurnTimeoutSeconds`    | Segundos que tiene cada jugador para hacer su jugada. Predeterminado: `10`.                                     |
-| `GameTiming:PreviewSeconds`        | Segundos que se muestran las cartas al empezar la partida. Predeterminado: `5`.                                 |
-| `GameTiming:ResultRetryIntervalSeconds` | Cada cuántos segundos se reintenta guardar los resultados pendientes. Predeterminado: `5`.                 |
+La configuración predeterminada se encuentra en:
 
-Los tres valores de `GameTiming` son obligatorios y deben estar entre `1` y `3600`: si falta alguno o no es válido, la API no arranca. Los predeterminados de turno y vista previa son los de [`docs/reglas-del-juego.md`](docs/reglas-del-juego.md). Cada partida conserva los tiempos con los que se creó.
+```text
+src/BattleHub.Memory.Api/appsettings.json
+```
 
-En la configuración de Docker Compose se utilizan variables de entorno de .NET con doble guion bajo para representar secciones anidadas. Algunos ejemplos son:
+Entre las principales opciones se encuentran:
 
-- `ConnectionStrings__MemoryDatabase`
-- `Database__MigrateOnStartup`
-- `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`, con `http://localhost:4000` y `http://localhost:4003` por defecto.
-- `GameTiming__TurnTimeoutSeconds`, `GameTiming__PreviewSeconds` y `GameTiming__ResultRetryIntervalSeconds`: en Docker Compose se agregan en `environment` del servicio `api`; si no se definen, se usan los de `appsettings.json`.
+| Configuración                           | Descripción                                              |
+| --------------------------------------- | -------------------------------------------------------- |
+| `ConnectionStrings:MemoryDatabase`      | Cadena de conexión a SQL Server.                         |
+| `Cors:Origins`                          | Orígenes permitidos para las solicitudes.                |
+| `Database:MigrateOnStartup`             | Habilita la aplicación de migraciones al iniciar.        |
+| `GameTiming:TurnTimeoutSeconds`         | Duración del turno de cada jugador.                      |
+| `GameTiming:PreviewSeconds`             | Tiempo de visualización inicial de las cartas.           |
+| `GameTiming:ResultRetryIntervalSeconds` | Intervalo para reintentar guardar resultados pendientes. |
 
-### Variables de entorno de Docker Compose
+Las variables de entorno de .NET pueden representar las secciones anidadas mediante doble guion bajo, por ejemplo:
 
-Las siguientes variables pueden configurarse en el archivo `.env`, creado a partir de `.env.example`:
-
-| Variable               | Para qué sirve                                                                                                                   | Valor predeterminado      |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `MSSQL_SA_PASSWORD`    | Contraseña del usuario `sa` de SQL Server. Si no se define, se genera una contraseña y se guarda en el volumen `memory-secrets`. | Generada automáticamente. |
-| `MEMORY_CORS_SHELL`    | Origen del Shell permitido por CORS.                                                                                             | `http://localhost:4000`   |
-| `MEMORY_CORS_FRONTEND` | Origen del microfrontend permitido por CORS.                                                                                     | `http://localhost:4003`   |
-| `MEMORY_API_URL`       | Dirección de la API que utiliza el microfrontend desde el navegador.                                                             | `http://localhost:5095`   |
-
-El microfrontend de Docker Compose usa la API en `http://localhost:5095`. Para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
-
-Los valores de conexión y credenciales dependen del entorno de ejecución. No se deben guardar contraseñas ni otros secretos en el repositorio.
-
-### Configuración del microfrontend
-
-Los tiempos del microfrontend están en `src/memory-microfrontend/memory-game/config/`: `environment.json` para desarrollo y `environment.production.json` para el build de producción, que es el que usa Docker Compose. Quedan dentro del build, así que para cambiarlos hay que reconstruir (`docker compose up --build`).
-
-| Clave                  | Para qué sirve                                                                                                    | Valor predeterminado |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `turnTimeoutMs`        | Duración inicial del turno en la pantalla. En la práctica es el valor que se muestra, porque no hay servidor.     | `10000`              |
-| `noMatchRevealDelayMs` | Milisegundos que quedan visibles dos cartas que no coinciden antes de ocultarse.                                  | `900`                |
-| `practicePreviewMs`    | Milisegundos de la vista previa en la práctica entre dos jugadores, que corre en el navegador sin servidor.       | `5000`               |
-
-En las partidas con servidor, el tiempo de turno y la vista previa los define la API (`GameTiming`): el servidor envía `turnTimeoutSeconds` y reemplaza a `turnTimeoutMs`. Para cambiar el tiempo de turno de esas partidas basta con configurar la API.
+```text
+ConnectionStrings__MemoryDatabase
+Database__MigrateOnStartup
+GameTiming__TurnTimeoutSeconds
+```
 
 ## Decisiones técnicas
 
-### Motor de base de datos: SQL Server
+### SQL Server y Entity Framework Core
 
-Se eligió **SQL Server** como motor de base de datos porque el proyecto está desarrollado sobre el ecosistema .NET y utiliza Entity Framework Core para gestionar la persistencia. Esta combinación permite centralizar el acceso a los datos, administrar la estructura mediante migraciones y mantener una integración directa entre la API y la base de datos.
+Se seleccionó SQL Server como motor de base de datos por su integración con el ecosistema .NET y Entity Framework Core.
 
-Además, SQL Server facilita la ejecución de pruebas de integración con una instancia real mediante Testcontainers y permite levantar un entorno reproducible para el equipo utilizando Docker Compose.
+Esta combinación permite administrar la persistencia mediante entidades, consultas y migraciones incrementales.
 
-### Integración del microfrontend con el Shell
+### Arquitectura por capas
 
-El juego se implementa como un microfrontend independiente en Aurelia 2. El Shell lo carga mediante **Module Federation**, utilizando el remote `memoryGame` y el archivo `remoteEntry.js`.
+El backend se organiza en tres proyectos principales:
 
-Esta integración permite mantener separado el desarrollo del juego y su interfaz, mientras el Shell conserva la responsabilidad de gestionar la autenticación y la comunicación con Matchmaking.
+- **Domain:** contiene las entidades y reglas del juego.
+- **Data:** administra el acceso a datos y la persistencia.
+- **Api:** expone los endpoints REST y el hub SignalR.
 
-## Datos de ejemplo
+Esta separación facilita el mantenimiento, las pruebas y la evolución de cada componente.
 
-Hay 18 partidas terminadas de los últimos 30 días para que el historial y las estadísticas tengan datos sin necesidad de jugar.
+### Comunicación en tiempo real
 
-Los jugadores son Ana, Bruno, Carla y Diego (`demo|ana`, `demo|bruno`, `demo|carla`, `demo|diego`). Cada uno tiene nueve partidas, con victorias, derrotas y tres empates. Las partidas se llaman `ejemplo-001` a `ejemplo-018`, y si ya existen no se vuelven a insertar.
+Se utiliza SignalR para mantener la comunicación entre los jugadores y el servidor durante las partidas multijugador.
 
-### Con Docker Compose
+### Microfrontend y Module Federation
 
-Los carga el servicio `sample-data`, independiente de la API: un contenedor con `sqlcmd` que ejecuta `docker/sample-data/datos-ejemplo.sql` después de que la API aplicó las migraciones. La API no participa en la carga.
+El juego se desarrolla como un microfrontend independiente en Aurelia 2. Module Federation permite que el Shell cargue el componente sin integrarlo directamente en su código fuente.
 
-- El script se ejecuta en cada `docker compose up`, pero solo inserta datos la primera vez.
-- Para cambiar los jugadores o las partidas, edita el script y borra los volúmenes con `docker compose down -v`, o elimina antes las partidas `ejemplo-001` a `ejemplo-018`.
-- La prueba `tests/BattleHub.Memory.IntegrationTests/Data/Seed/SampleDataScriptTests.cs` ejecuta el mismo script sobre la base con las migraciones, para detectar si una migración lo rompe.
+### Docker Compose
 
-### Con `dotnet run`
-
-Cuando `SampleData:Enabled=true` (así viene en `launchSettings.json`), la API carga las mismas partidas al arrancar. La carga se implementa en `src/BattleHub.Memory.Data/Seed/SampleDataSeeder.cs`, fuera del `DbContext`.
-
-Para asociar partidas de ejemplo a una cuenta real, puedes configurar el identificador del usuario (el `currentUser.id` que entrega el Shell) mediante variables de entorno. Por ejemplo:
-
-```powershell
-$env:SampleData__Players__0__UserId = "auth0|su-id"
-$env:SampleData__Players__0__DisplayName = "Su nombre"
-$env:SampleData__Players__1__UserId = "demo|bruno"
-$env:SampleData__Players__1__DisplayName = "Bruno"
-```
-
-Si ya se cargaron partidas de ejemplo con otros jugadores, puede ser necesario eliminarlas de la base de datos antes de volver a cargar los datos. Hazlo únicamente en una base de datos de desarrollo y verifica primero qué registros vas a eliminar.
+Docker Compose facilita la ejecución del entorno completo mediante un único comando, incluyendo la base de datos, la API, el microfrontend y la generación independiente de datos de ejemplo.
 
 ## Contratos implementados
 
-A partir de [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), el proyecto implementa:
+A partir del repositorio [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), el proyecto implementa:
 
-- Contrato de entrada al juego (`matchId`, `gameType`, `currentUser`) y ciclo de vida de `GameModule` (contrato 03).
-- API de resultados, historial y estadísticas (contrato 04).
-- Integración con el Shell mediante Module Federation (ADR-003).
-- Aviso de fin de partida al Shell con `battlehub:game-finished` en `context.events`. El Shell avisa a Matchmaking.
-- Modo práctica dentro del Shell (`mode: "practice"`), sin sala ni registros (R-44).
+- Contrato de entrada al juego mediante `matchId`, `gameType` y `currentUser`.
+- Ciclo de vida de `GameModule`, correspondiente al contrato 03.
+- API de resultados, historial y estadísticas, correspondiente al contrato 04.
+- Integración con el Shell mediante Module Federation.
+- Notificación del final de partida mediante `battlehub:game-finished`.
+- Modo práctica integrado con el Shell, sin sala ni registro de resultados.
 
-Para más información sobre la API y el contrato con el Shell, consulta [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
+Para consultar los detalles, revisar [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md).
 
 ## Ejemplos de consumo de la API
 
-El documento [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md) contiene ejemplos de solicitudes HTTP con `curl` para probar los endpoints de la API, consultar resultados, historial y estadísticas, y revisar la integración con el Shell.
+El documento [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md) contiene ejemplos de solicitudes HTTP mediante `curl` para probar los endpoints de la API, consultar resultados, historial y estadísticas, y revisar la integración con el Shell.
 
-## Límites conocidos
+## Limitaciones conocidas y aspectos por verificar
 
-- Las partidas en curso se mantienen en memoria. La API debe ejecutarse en **una sola instancia** para evitar inconsistencias entre sesiones.
-- Si la API se reinicia, las partidas que estaban en curso se pierden, aunque los resultados previamente guardados en la base de datos permanecen.
-- Como el juego no usa Auth0, la API confía en el `userId` que entrega el Shell y no restringe quién consulta el historial, las estadísticas o los resultados.
+- Las partidas en curso se mantienen en memoria. Esta implementación debe revisarse frente al requisito R-12, que permite el uso de memoria únicamente en pruebas. No debe considerarse cumplido hasta resolver la persistencia de las partidas activas.
+- Si la API se reinicia, las partidas que estaban en curso se pierden, aunque los resultados previamente guardados permanecen en SQL Server.
+- La API no valida tokens de Auth0 ni restringe por sí misma las consultas de historial, estadísticas y resultados. La identidad se recibe desde el Shell.
+- Debe verificarse que el modo playground permita jugar sin Shell, Auth0 ni otros servicios, conforme al requisito R-34.
+
+## Referencias
+
+- [Reglas del juego](docs/reglas-del-juego.md).
+- [Documentación de la API y contrato con el Shell](docs/api-y-contrato-shell.md).
+- [Contratos oficiales de BattleHub](https://github.com/javiercoulon-public/battlehub-contracts).
 
 ## Equipo
 
-Equipo 6 — Juego de Memoria.
+**Equipo 6 — Juego de Memoria**
