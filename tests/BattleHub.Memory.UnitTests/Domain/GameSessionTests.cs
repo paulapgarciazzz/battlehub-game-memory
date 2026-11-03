@@ -5,11 +5,14 @@ namespace BattleHub.Memory.UnitTests.Domain;
 
 public class GameSessionTests
 {
+    private const int PreviewSeconds = 5;
+    private const int TurnTimeoutSeconds = 10;
+
     private static Board CreateBoard() => new(new[]
     {
         "A", "B", "C", "D",
         "E", "F", "G", "H"
-    });
+    }, PreviewSeconds);
 
     private static List<Player> CreatePlayers() =>
     [
@@ -25,7 +28,7 @@ public class GameSessionTests
         {
             "A", "B", "C", "D",
             "E", "F", "G", "H"
-        });
+        }, PreviewSeconds);
 
         var players = new List<Player>
         {
@@ -34,7 +37,19 @@ public class GameSessionTests
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() =>
-            new GameSession("match1", board, players));
+            new GameSession("match1", board, players, TurnTimeoutSeconds));
+    }
+
+    [Fact]
+    public void Snapshot_IncludesTheTurnTimeoutOfTheSession()
+    {
+        var session = new GameSession("match1", CreateBoard(), CreatePlayers(), 30);
+
+        using var snapshot = JsonDocument.Parse(
+            JsonSerializer.Serialize(session.Snapshot(false, null, false)));
+
+        Assert.Equal(30, session.TurnTimeoutSeconds);
+        Assert.Equal(30, snapshot.RootElement.GetProperty("TurnTimeoutSeconds").GetInt32());
     }
 
     [Fact]
@@ -45,7 +60,7 @@ public class GameSessionTests
         {
             "A", "B", "C", "D",
             "E", "F", "G", "H"
-        });
+        }, PreviewSeconds);
 
         var players = new List<Player>
         {
@@ -53,7 +68,7 @@ public class GameSessionTests
             new Player("user2", "Jugador 2")
         };
 
-        var session = new GameSession("match1", board, players);
+        var session = new GameSession("match1", board, players, TurnTimeoutSeconds);
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
@@ -68,7 +83,7 @@ public class GameSessionTests
         {
         "A", "B", "C", "D",
         "E", "F", "G", "H"
-    });
+    }, PreviewSeconds);
 
         var players = new List<Player>
     {
@@ -76,7 +91,7 @@ public class GameSessionTests
         new Player("user2", "Jugador 2")
     };
 
-        var session = new GameSession("match1", board, players);
+        var session = new GameSession("match1", board, players, TurnTimeoutSeconds);
 
         var pair = board.Cards
             .GroupBy(card => card.Value)
@@ -100,7 +115,7 @@ public class GameSessionTests
         {
         "A", "B", "C", "D",
         "E", "F", "G", "H"
-    });
+    }, PreviewSeconds);
 
         var player1 = new Player("user1", "Jugador 1");
         var player2 = new Player("user2", "Jugador 2");
@@ -111,7 +126,7 @@ public class GameSessionTests
         player2
     };
 
-        var session = new GameSession("match1", board, players);
+        var session = new GameSession("match1", board, players, TurnTimeoutSeconds);
 
         // Simulamos que el jugador 1 consiguió 2 parejas
         player1.AddMatchedPair();
@@ -132,7 +147,7 @@ public class GameSessionTests
     public void Snapshot_HidesFaceDownValuesAndRevealsAllCardsDuringPreview()
     {
         var board = CreateBoard();
-        var session = new GameSession("match1", board, CreatePlayers());
+        var session = new GameSession("match1", board, CreatePlayers(), TurnTimeoutSeconds);
         var visibleCard = board.Cards[0];
         session.FlipCard("user1", visibleCard.Id);
 
@@ -162,7 +177,7 @@ public class GameSessionTests
     [Fact]
     public void ForfeitTurnByTimeout_HidesFirstCardAndAdvancesPlayer()
     {
-        var session = new GameSession("match1", CreateBoard(), CreatePlayers());
+        var session = new GameSession("match1", CreateBoard(), CreatePlayers(), TurnTimeoutSeconds);
         var firstCard = session.Board.Cards[0];
 
         session.FlipCard("user1", firstCard.Id);
@@ -177,7 +192,7 @@ public class GameSessionTests
     [Fact]
     public void FlipCard_RejectsAnAlreadyFlippedOrUnknownCard()
     {
-        var session = new GameSession("match1", CreateBoard(), CreatePlayers());
+        var session = new GameSession("match1", CreateBoard(), CreatePlayers(), TurnTimeoutSeconds);
 
         session.FlipCard("user1", 0);
 
@@ -193,7 +208,7 @@ public class GameSessionTests
         foreach (var card in board.Cards)
             card.MarkAsMatched();
 
-        var session = new GameSession("match1", board, players);
+        var session = new GameSession("match1", board, players, TurnTimeoutSeconds);
 
         Assert.True(session.IsFinished);
         Assert.Throws<InvalidOperationException>(() => session.FlipCard("user1", 0));
@@ -211,7 +226,7 @@ public class GameSessionTests
         players[0].AddMatchedPair();
         players[1].AddMatchedPair();
 
-        var session = new GameSession("match1", board, players);
+        var session = new GameSession("match1", board, players, TurnTimeoutSeconds);
         using var snapshot = JsonDocument.Parse(
             JsonSerializer.Serialize(session.Snapshot(false, null, true)));
 

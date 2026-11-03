@@ -254,12 +254,18 @@ Los valores predeterminados de la API se encuentran en `src/BattleHub.Memory.Api
 | `Database:MigrateOnStartup`        | Indica si la API aplica las migraciones al arrancar. En Docker Compose está habilitado.                         |
 | `SampleData:Enabled`               | Indica si la API carga partidas de ejemplo al arrancar. Solo se usa con `dotnet run`, no en Docker Compose.     |
 | `SampleData:Players`               | Configuración opcional de los jugadores para las partidas de ejemplo de `SampleData:Enabled`.                   |
+| `GameTiming:TurnTimeoutSeconds`    | Segundos que tiene cada jugador para hacer su jugada. Predeterminado: `10`.                                     |
+| `GameTiming:PreviewSeconds`        | Segundos que se muestran las cartas al empezar la partida. Predeterminado: `5`.                                 |
+| `GameTiming:ResultRetryIntervalSeconds` | Cada cuántos segundos se reintenta guardar los resultados pendientes. Predeterminado: `5`.                 |
+
+Los tres valores de `GameTiming` son obligatorios y deben estar entre `1` y `3600`: si falta alguno o no es válido, la API no arranca. Los predeterminados de turno y vista previa son los de [`docs/reglas-del-juego.md`](docs/reglas-del-juego.md). Cada partida conserva los tiempos con los que se creó.
 
 En la configuración de Docker Compose se utilizan variables de entorno de .NET con doble guion bajo para representar secciones anidadas. Algunos ejemplos son:
 
 - `ConnectionStrings__MemoryDatabase`
 - `Database__MigrateOnStartup`
 - `Cors__Origins__0` y `Cors__Origins__1`: en Docker Compose salen de `MEMORY_CORS_SHELL` y `MEMORY_CORS_FRONTEND` del `.env`, con `http://localhost:4000` y `http://localhost:4003` por defecto.
+- `GameTiming__TurnTimeoutSeconds`, `GameTiming__PreviewSeconds` y `GameTiming__ResultRetryIntervalSeconds`: en Docker Compose se agregan en `environment` del servicio `api`; si no se definen, se usan los de `appsettings.json`.
 
 ### Variables de entorno de Docker Compose
 
@@ -275,6 +281,18 @@ Las siguientes variables pueden configurarse en el archivo `.env`, creado a part
 El microfrontend de Docker Compose usa la API en `http://localhost:5095`. Para cambiarla, define `MEMORY_API_URL` en `.env` y reconstruye con `docker compose up --build`.
 
 Los valores de conexión y credenciales dependen del entorno de ejecución. No se deben guardar contraseñas ni otros secretos en el repositorio.
+
+### Configuración del microfrontend
+
+Los tiempos del microfrontend están en `src/memory-microfrontend/memory-game/config/`: `environment.json` para desarrollo y `environment.production.json` para el build de producción, que es el que usa Docker Compose. Quedan dentro del build, así que para cambiarlos hay que reconstruir (`docker compose up --build`).
+
+| Clave                  | Para qué sirve                                                                                                    | Valor predeterminado |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `turnTimeoutMs`        | Duración inicial del turno en la pantalla. En la práctica es el valor que se muestra, porque no hay servidor.     | `10000`              |
+| `noMatchRevealDelayMs` | Milisegundos que quedan visibles dos cartas que no coinciden antes de ocultarse.                                  | `900`                |
+| `practicePreviewMs`    | Milisegundos de la vista previa en la práctica entre dos jugadores, que corre en el navegador sin servidor.       | `5000`               |
+
+En las partidas con servidor, el tiempo de turno y la vista previa los define la API (`GameTiming`): el servidor envía `turnTimeoutSeconds` y reemplaza a `turnTimeoutMs`. Para cambiar el tiempo de turno de esas partidas basta con configurar la API.
 
 ## Decisiones técnicas
 

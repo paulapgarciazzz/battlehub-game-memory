@@ -20,7 +20,7 @@ public sealed class MemoryLocalHubUnitTests
 
     private static HubHarness CreateHub()
     {
-        var games = new MemoryLocalGameService();
+        var games = new MemoryLocalGameService(TestGameTiming.Create());
         var group = new Mock<IClientProxy>();
         group.Setup(proxy => proxy.SendCoreAsync(
                 It.IsAny<string>(),

@@ -9,7 +9,7 @@ public sealed class MemoryGameServiceTests
     private static Player SecondPlayer() => new("u2", "Beto");
 
     private static Board CreateBoard() =>
-        new(["A", "B", "C", "D", "E", "F", "G", "H"]);
+        new(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5);
 
     private static void Finish(GameSession session)
     {
@@ -23,7 +23,7 @@ public sealed class MemoryGameServiceTests
     [Fact]
     public void AddPlayer_WaitsForSecondDistinctPlayerAndCreatesOneSession()
     {
-        var service = new MemoryGameService();
+        var service = new MemoryGameService(TestGameTiming.Create());
 
         var first = service.AddPlayer("m1", FirstPlayer(), out var firstCreated);
         var duplicate = service.AddPlayer("m1", FirstPlayer(), out var duplicateCreated);
@@ -46,9 +46,25 @@ public sealed class MemoryGameServiceTests
     }
 
     [Fact]
+    public void NewSessionsUseTheConfiguredTimes()
+    {
+        var timing = TestGameTiming.Create(turnTimeoutSeconds: 30, previewSeconds: 7);
+        var service = new MemoryGameService(timing);
+        var local = new MemoryLocalGameService(timing);
+
+        var session = service.CreateSession("m1", [FirstPlayer(), SecondPlayer()]);
+        var localSession = local.CreateSession("m2", [FirstPlayer(), SecondPlayer()]);
+
+        Assert.Equal(30, session.TurnTimeoutSeconds);
+        Assert.Equal(7, session.Board.PreviewSeconds);
+        Assert.Equal(30, localSession.TurnTimeoutSeconds);
+        Assert.Equal(7, localSession.Board.PreviewSeconds);
+    }
+
+    [Fact]
     public void SessionLookupsAndRemovalTrackActiveAndWaitingGames()
     {
-        var service = new MemoryGameService();
+        var service = new MemoryGameService(TestGameTiming.Create());
         service.AddPlayer("waiting", FirstPlayer(), out _);
         var session = service.CreateSession("active", [FirstPlayer(), SecondPlayer()]);
 
@@ -71,7 +87,7 @@ public sealed class MemoryGameServiceTests
     [Fact]
     public void CreateSessionRequiresExactlyTwoDifferentPlayers()
     {
-        var service = new MemoryGameService();
+        var service = new MemoryGameService(TestGameTiming.Create());
 
         Assert.Throws<InvalidOperationException>(
             () => service.CreateSession("one", [FirstPlayer()]));
@@ -82,7 +98,7 @@ public sealed class MemoryGameServiceTests
     [Fact]
     public void PreviewAndSavedStateCanBeStartedAndEnded()
     {
-        var service = new MemoryGameService();
+        var service = new MemoryGameService(TestGameTiming.Create());
         service.AddPlayer("m1", FirstPlayer(), out _);
         service.AddPlayer("m1", SecondPlayer(), out _);
 
@@ -98,7 +114,7 @@ public sealed class MemoryGameServiceTests
     [Fact]
     public void UnsavedResultsReturnsOnlyFinishedUnmarkedSessions()
     {
-        var service = new MemoryGameService();
+        var service = new MemoryGameService(TestGameTiming.Create());
         var unfinished = service.CreateSession("unfinished", [FirstPlayer(), SecondPlayer()]);
         var finished = service.CreateSession("finished", [FirstPlayer(), SecondPlayer()]);
         Finish(finished);

@@ -19,6 +19,7 @@ export interface PreviewFinishedMessage {
   matchId: string;
   currentPlayerId: string;
   turnDeadline?: string | null;
+  turnTimeoutSeconds: number;
 }
 
 export interface CardFlippedMessage {
@@ -45,6 +46,7 @@ export interface StateSnapshotMessage {
   startedAt: string;
   currentPlayerId: string;
   turnDeadline: string | null;
+  turnTimeoutSeconds: number;
   players: {userId: string; displayName: string; matchedPairs: number}[];
   cards: {id: number; value: string | null; faceUp: boolean; matched: boolean}[];
   resultSaved: boolean;

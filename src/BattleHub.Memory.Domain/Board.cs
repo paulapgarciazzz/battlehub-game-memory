@@ -7,7 +7,7 @@ public class Board
     public IReadOnlyList<Card> Cards { get; }
     public int PreviewSeconds { get; }
 
-    public Board(IEnumerable<string> cardValues, int previewSeconds = 5)
+    public Board(IEnumerable<string> cardValues, int previewSeconds)
     {
         if (previewSeconds < 0)
             throw new ArgumentException("El tiempo de previsualización no puede ser negativo.");

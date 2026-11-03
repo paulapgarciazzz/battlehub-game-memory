@@ -14,7 +14,7 @@ public sealed class ResultRetryWorkerTests
     [Fact]
     public async Task SavesFinishedResultsAndKeepsFailedResultsPending()
     {
-        var games = new MemoryGameService();
+        var games = new MemoryGameService(TestGameTiming.Create());
         var failedSession = CreateFinishedSession("retry-failure");
         var savedSession = CreateFinishedSession("retry-success");
         games.CreateSession(failedSession.MatchId, failedSession.Players);
@@ -66,8 +66,10 @@ public sealed class ResultRetryWorkerTests
             games,
             recorder,
             hub.Object,
+            TestGameTiming.Create(resultRetryIntervalSeconds: 1),
             NullLogger<ResultRetryWorker>.Instance);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        // Menos de 5 s: si el intervalo no saliera de la configuración, no alcanzaría.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
 
         await worker.StartAsync(timeout.Token);
         await Task.WhenAll(
@@ -86,8 +88,9 @@ public sealed class ResultRetryWorkerTests
     private static GameSession CreateFinishedSession(string matchId) =>
         new(
             matchId,
-            new Board(["A", "B", "C", "D", "E", "F", "G", "H"]),
-            [new Player("u1", "Ana"), new Player("u2", "Beto")]);
+            new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5),
+            [new Player("u1", "Ana"), new Player("u2", "Beto")],
+            turnTimeoutSeconds: 10);
 
     private static void Finish(GameSession session)
     {

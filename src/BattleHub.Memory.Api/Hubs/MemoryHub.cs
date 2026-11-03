@@ -114,7 +114,8 @@ public sealed class MemoryHub(
             {
                 MatchId = matchId,
                 CurrentPlayerId = session.CurrentPlayer.UserId,
-                TurnDeadline = timers.Deadline(matchId)
+                TurnDeadline = timers.Deadline(matchId),
+                TurnTimeoutSeconds = session.TurnTimeoutSeconds
             });
     }
 

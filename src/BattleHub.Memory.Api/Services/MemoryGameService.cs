@@ -1,9 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using BattleHub.Memory.Domain;
+using Microsoft.Extensions.Options;
 
 namespace BattleHub.Memory.Api.Services;
 
-public class MemoryGameService
+public class MemoryGameService(IOptions<GameTimingOptions> timing)
 {
     private readonly object _lock = new();
 
@@ -126,12 +127,13 @@ public class MemoryGameService
             "E", "F", "G", "H"
         };
 
-        var board = new Board(cardValues);
+        var board = new Board(cardValues, timing.Value.PreviewSeconds);
 
         var session = new GameSession(
             matchId,
             board,
-            players);
+            players,
+            timing.Value.TurnTimeoutSeconds);
 
         lock (_lock)
         {

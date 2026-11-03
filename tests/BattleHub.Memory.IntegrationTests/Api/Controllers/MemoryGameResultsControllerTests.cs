@@ -20,8 +20,9 @@ public sealed class MemoryGameResultsControllerTests(MemoryApiFactory factory)
         };
         var session = new GameSession(
             matchId,
-            new Board(["A", "B", "C", "D", "E", "F", "G", "H"]),
-            players);
+            new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5),
+            players,
+            turnTimeoutSeconds: 10);
 
         return session;
     }

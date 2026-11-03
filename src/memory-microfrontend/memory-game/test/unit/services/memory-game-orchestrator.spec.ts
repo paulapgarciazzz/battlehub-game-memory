@@ -1,4 +1,5 @@
 import { IEventAggregator } from 'aurelia';
+import environment from '../../../config/environment.json';
 import { MemoryGameOrchestrator } from '../../../src/services/memory-game-orchestrator';
 import { MemoryHubEvents } from '../../../src/services/memory-hub.service';
 import { MemoryGameState } from '../../../src/state/memory-game-state';
@@ -40,13 +41,13 @@ describe('MemoryGameOrchestrator', () => {
       currentPlayerId: 'u2'
     });
 
-    // El turno cambia en el mismo evento, no 900 ms después.
+    // El turno cambia en el mismo evento, no cuando se ocultan las cartas.
     expect(state.currentPlayerId).toBe('u2');
     expect(state.isMyTurn).toBe(false);
     expect(state.cards[0].faceUp).toBe(true);
     expect(state.cards[1].faceUp).toBe(true);
 
-    jest.advanceTimersByTime(900);
+    jest.advanceTimersByTime(environment.noMatchRevealDelayMs);
 
     expect(state.cards[0].faceUp).toBe(false);
     expect(state.cards[1].faceUp).toBe(false);
@@ -105,7 +106,7 @@ describe('MemoryGameOrchestrator', () => {
     expect(state.players.map(player => player.displayName)).toEqual(['Ana', 'Beto']);
     expect(state.cards.every(card => card.faceUp)).toBe(true);
 
-    jest.advanceTimersByTime(5_000);
+    jest.advanceTimersByTime(environment.practicePreviewMs);
     expect(state.phase).toBe('playing');
     expect(state.cards.every(card => !card.faceUp)).toBe(true);
 
@@ -130,7 +131,7 @@ describe('MemoryGameOrchestrator', () => {
     const { orchestrator, state } = setup();
 
     orchestrator.startPractice('Ana', 'Beto');
-    jest.advanceTimersByTime(5_000);
+    jest.advanceTimersByTime(environment.practicePreviewMs);
 
     const first = state.cards[0];
     const second = state.cards.find(card => card.value !== first.value)!;
@@ -140,7 +141,7 @@ describe('MemoryGameOrchestrator', () => {
     expect(state.practiceResolving).toBe(true);
     expect(state.currentPlayerId).toBe('local-1');
 
-    jest.advanceTimersByTime(900);
+    jest.advanceTimersByTime(environment.noMatchRevealDelayMs);
 
     expect(state.cards[first.id].faceUp).toBe(false);
     expect(state.cards[second.id].faceUp).toBe(false);
@@ -171,6 +172,56 @@ describe('MemoryGameOrchestrator', () => {
     expect(state.cards[first.id].matched).toBe(true);
     expect(state.cards[second.id].matched).toBe(true);
     expect(hub.flipCard).not.toHaveBeenCalled();
+  });
+
+  it('toma el tiempo de turno del servidor y lo usa cuando no llega el vencimiento', () => {
+    jest.useFakeTimers();
+    const now = new Date('2026-10-04T12:00:00Z').getTime();
+    jest.setSystemTime(now);
+    const { state, ea } = setup();
+    startPlaying(state);
+    expect(state.turnTotalMs).toBe(environment.turnTimeoutMs);
+
+    ea.publish(MemoryHubEvents.PreviewFinished, {
+      currentPlayerId: 'u1',
+      turnDeadline: null,
+      turnTimeoutSeconds: 25
+    });
+    expect(state.turnTotalMs).toBe(25_000);
+    expect(state.turnDeadline).toBe(now + 25_000);
+
+    ea.publish(MemoryHubEvents.TurnTimeout, {
+      currentPlayerId: 'u2',
+      turnDeadline: null,
+      turnTimeoutSeconds: 30
+    });
+    expect(state.turnTotalMs).toBe(30_000);
+    expect(state.turnDeadline).toBe(now + 30_000);
+
+    ea.publish(MemoryHubEvents.StateSnapshot, {
+      matchId: 'm1',
+      phase: 'playing',
+      startedAt: '2026-10-04T12:00:00Z',
+      currentPlayerId: 'u1',
+      turnDeadline: null,
+      turnTimeoutSeconds: 40,
+      players: [],
+      cards: [],
+      resultSaved: false,
+      isDraw: false,
+      winnerUserId: null
+    });
+    expect(state.turnTotalMs).toBe(40_000);
+
+    // Si el mensaje no lo trae, se mantiene el último valor conocido.
+    ea.publish(MemoryHubEvents.TurnTimeout, {
+      currentPlayerId: 'u2',
+      turnDeadline: null
+    });
+    expect(state.turnTotalMs).toBe(40_000);
+
+    state.reset();
+    expect(state.turnTotalMs).toBe(environment.turnTimeoutMs);
   });
 
   it('aplica eventos de jugadores, inicio de partida, timeout y snapshot', async () => {

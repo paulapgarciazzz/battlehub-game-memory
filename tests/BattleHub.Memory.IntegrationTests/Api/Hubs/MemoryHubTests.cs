@@ -53,6 +53,8 @@ public sealed class MemoryHubTests(MemoryApiFactory factory)
         await using var two = Connection();
         await using var third = Connection();
         await one.StartAsync(ct); await two.StartAsync(ct); await third.StartAsync(ct);
+        var previewFinished = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        one.On<JsonElement>("PreviewFinished", value => previewFinished.TrySetResult(value));
         await Assert.ThrowsAsync<HubException>(() => one.InvokeAsync("FlipCard", id, 0, ct));
         await one.InvokeAsync("JoinMatch", id, "user-one", "Uno", ct);
         await two.InvokeAsync("JoinMatch", id, "user-two", "Dos", ct);
@@ -60,6 +62,9 @@ public sealed class MemoryHubTests(MemoryApiFactory factory)
         await Assert.ThrowsAsync<HubException>(() => third.InvokeAsync("JoinMatch", id, "user-three", "Tres", ct));
         var game = factory.Services.GetRequiredService<MemoryGameService>().GetSession(id);
         Assert.Equal(2, game.Players.Count);
+        // El frontend toma el tiempo de turno de estos mensajes.
+        Assert.Equal(10, game.TurnTimeoutSeconds);
+        Assert.Equal(10, (await previewFinished.Task.WaitAsync(ct)).GetProperty("turnTimeoutSeconds").GetInt32());
         var pairGroups = game.Board.Cards.GroupBy(c => c.Value).ToArray();
         await one.InvokeAsync("FlipCard", id, pairGroups[0].First().Id, ct);
         await one.InvokeAsync("FlipCard", id, pairGroups[0].Last().Id, ct);
@@ -68,6 +73,7 @@ public sealed class MemoryHubTests(MemoryApiFactory factory)
         one.On<JsonElement>("StateSnapshot", value => restored.TrySetResult(value));
         await one.InvokeAsync("JoinMatch", id, "user-one", "Uno", ct);
         var snapshot = await restored.Task.WaitAsync(ct);
+        Assert.Equal(10, snapshot.GetProperty("turnTimeoutSeconds").GetInt32());
         Assert.Equal(1, snapshot.GetProperty("players")[0].GetProperty("matchedPairs").GetInt32());
         Assert.Equal(2, snapshot.GetProperty("cards").EnumerateArray().Count(c => c.GetProperty("matched").GetBoolean()));
         Assert.Contains(snapshot.GetProperty("cards").EnumerateArray(), c => c.GetProperty("value").ValueKind == JsonValueKind.Null);

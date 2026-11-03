@@ -32,7 +32,7 @@ public readonly record struct TurnTimeoutResult(
 
 public class GameSession
 {
-    public const int TurnTimeoutSeconds = 10;
+    public int TurnTimeoutSeconds { get; }
 
     public string MatchId { get; }
     public Board Board { get; }
@@ -69,12 +69,14 @@ public class GameSession
     public GameSession(
         string matchId,
         Board board,
-        IReadOnlyList<Player> players)
+        IReadOnlyList<Player> players,
+        int turnTimeoutSeconds)
     {
         if (players.Count < 2)
             throw new ArgumentException(
                 "Se necesitan al menos 2 jugadores.");
 
+        TurnTimeoutSeconds = turnTimeoutSeconds;
         MatchId = matchId;
         Board = board;
         Players = players;
@@ -248,6 +250,7 @@ public class GameSession
                 StartedAt,
                 CurrentPlayerId = CurrentPlayer.UserId,
                 TurnDeadline = deadline,
+                TurnTimeoutSeconds,
                 IsDraw = IsFinished && winners.Count > 1,
                 WinnerUserId = IsFinished && winners.Count == 1 ? winners[0].UserId : null,
                 ResultSaved = resultSaved,

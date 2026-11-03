@@ -22,12 +22,31 @@ public sealed class TurnTimerServiceTests
         Assert.NotNull(deadline);
         Assert.InRange(
             deadline.Value,
-            beforeStart.AddSeconds(GameSession.TurnTimeoutSeconds),
-            DateTimeOffset.UtcNow.AddSeconds(GameSession.TurnTimeoutSeconds));
+            beforeStart.AddSeconds(session.TurnTimeoutSeconds),
+            DateTimeOffset.UtcNow.AddSeconds(session.TurnTimeoutSeconds));
 
         service.Stop(session.MatchId);
 
         Assert.Null(service.Deadline(session.MatchId));
+    }
+
+    [Fact]
+    public void DeadlineUsesTheTurnTimeoutOfTheSession()
+    {
+        var service = CreateService();
+        var session = CreateSession("timer-configured", turnTimeoutSeconds: 30);
+        var beforeStart = DateTimeOffset.UtcNow;
+
+        service.Start(session);
+
+        var deadline = service.Deadline(session.MatchId);
+        Assert.NotNull(deadline);
+        Assert.InRange(
+            deadline.Value,
+            beforeStart.AddSeconds(30),
+            DateTimeOffset.UtcNow.AddSeconds(30));
+
+        service.Stop(session.MatchId);
     }
 
     [Fact]
@@ -73,7 +92,7 @@ public sealed class TurnTimerServiceTests
         var session = CreateSession("timer-timeout");
 
         service.Start(session);
-        await notified.Task.WaitAsync(TimeSpan.FromSeconds(GameSession.TurnTimeoutSeconds + 10));
+        await notified.Task.WaitAsync(TimeSpan.FromSeconds(session.TurnTimeoutSeconds + 10));
 
         Assert.Equal("u2", session.CurrentPlayer.UserId);
         Assert.NotNull(service.Deadline(session.MatchId));
@@ -85,11 +104,12 @@ public sealed class TurnTimerServiceTests
             Mock.Of<IHubContext<MemoryHub>>(),
             NullLogger<TurnTimerService>.Instance);
 
-    private static GameSession CreateSession(string matchId) =>
+    private static GameSession CreateSession(string matchId, int turnTimeoutSeconds = 10) =>
         new(
             matchId,
-            new Board(["A", "B", "C", "D", "E", "F", "G", "H"]),
-            [new Player("u1", "Ana"), new Player("u2", "Beto")]);
+            new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5),
+            [new Player("u1", "Ana"), new Player("u2", "Beto")],
+            turnTimeoutSeconds);
 
     private static void Finish(GameSession session)
     {

@@ -569,8 +569,8 @@ await connection.invoke("FlipCard", "MEMORY-TEST-001", 1);
 | ------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `PlayerJoined`     | Un jugador se une a la sala.                                    | `userId`, `displayName`.                                                                       |
 | `GameReady`        | Ambos jugadores están presentes y comienza la previsualización. | `matchId`, `previewSeconds`, `cards`, `players`.                                               |
-| `PreviewFinished`  | Termina la previsualización inicial.                            | `matchId`, `currentPlayerId`, `turnDeadline`.                                                  |
-| `StateSnapshot`    | El jugador recibe el estado actual de la partida.               | Estado de las cartas, jugadores, marcador, turno, vencimiento y estado del resultado guardado. |
+| `PreviewFinished`  | Termina la previsualización inicial.                            | `matchId`, `currentPlayerId`, `turnDeadline`, `turnTimeoutSeconds`.                            |
+| `StateSnapshot`    | El jugador recibe el estado actual de la partida.               | Estado de las cartas, jugadores, marcador, turno, vencimiento, tiempo de turno (`turnTimeoutSeconds`) y estado del resultado guardado. |
 | `CardFlipped`      | El servidor procesa una jugada válida.                          | `matchId`, `userId`, `cards`, `isMatch`, `currentPlayerId`, `isFinished`, `turnDeadline`.      |
 | `ResultSaved`      | El resultado quedó guardado.                                    | `matchId`.                                                                                     |
 | `ResultSaveFailed` | Falló el intento de guardar el resultado.                       | `matchId`.                                                                                     |
@@ -611,7 +611,8 @@ Evento `PreviewFinished`:
 {
   "matchId": "MEMORY-TEST-001",
   "currentPlayerId": "auth0|usuario-de-prueba",
-  "turnDeadline": "2026-10-20T15:00:15Z"
+  "turnDeadline": "2026-10-20T15:00:15Z",
+  "turnTimeoutSeconds": 10
 }
 ```
 

@@ -4,6 +4,8 @@ namespace BattleHub.Memory.UnitTests.Domain;
 
 public class BoardTests
 {
+    private const int PreviewSeconds = 5;
+
     private static readonly string[] Values =
     [
         "A", "B", "C", "D",
@@ -13,7 +15,7 @@ public class BoardTests
     [Fact]
     public void Board_ShouldHave16Cards()
     {
-        var board = new Board(Values);
+        var board = new Board(Values, PreviewSeconds);
 
         Assert.Equal(16, board.Cards.Count);
     }
@@ -21,14 +23,14 @@ public class BoardTests
     [Fact]
     public void Board_RejectsInvalidCardCountAndPreviewDuration()
     {
-        Assert.Throws<ArgumentException>(() => new Board(Values[..7]));
+        Assert.Throws<ArgumentException>(() => new Board(Values[..7], PreviewSeconds));
         Assert.Throws<ArgumentException>(() => new Board(Values, -1));
     }
 
     [Fact]
     public void GetCard_ThrowsForUnknownId()
     {
-        var board = new Board(Values);
+        var board = new Board(Values, PreviewSeconds);
 
         Assert.Throws<ArgumentException>(() => board.GetCard(-1));
     }
@@ -36,7 +38,7 @@ public class BoardTests
     [Fact]
     public void RevealAllAndHideAll_ChangeOnlyUnmatchedCardVisibility()
     {
-        var board = new Board(Values);
+        var board = new Board(Values, PreviewSeconds);
         var matched = board.Cards[0];
         matched.MarkAsMatched();
 

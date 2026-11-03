@@ -41,7 +41,7 @@ public sealed class MemoryLocalTurnTimerService
         var cts = new CancellationTokenSource();
 
         _deadlines[matchId] =
-            DateTimeOffset.UtcNow.AddSeconds(GameSession.TurnTimeoutSeconds);
+            DateTimeOffset.UtcNow.AddSeconds(session.TurnTimeoutSeconds);
 
         var previous = _timers.AddOrUpdate(
             matchId,
@@ -78,7 +78,7 @@ public sealed class MemoryLocalTurnTimerService
         try
         {
             await Task.Delay(
-                TimeSpan.FromSeconds(GameSession.TurnTimeoutSeconds),
+                TimeSpan.FromSeconds(session.TurnTimeoutSeconds),
                 cts.Token);
 
             if (!_games.TryGetSession(matchId, out var currentSession) ||
@@ -98,7 +98,7 @@ public sealed class MemoryLocalTurnTimerService
                     TurnDeadline = Deadline(matchId),
                     timeout.PreviousPlayerId,
                     timeout.CurrentPlayerId,
-                    TurnTimeoutSeconds = GameSession.TurnTimeoutSeconds
+                    TurnTimeoutSeconds = session.TurnTimeoutSeconds
                 });
         }
         catch (OperationCanceledException)
