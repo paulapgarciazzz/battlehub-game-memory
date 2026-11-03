@@ -1,28 +1,24 @@
-// Tipos del contrato con el Shell: contrato 03 (secciones 5 y 6) más lo acordado
-// con el Equipo 3 en el PR #6 del Shell (commit 829d9bc): canal events y modo
-// práctica. El juego no tiene contacto con Auth0: el Shell ya autenticó al
-// usuario y entrega su id.
-
-/**
- * Contexto que entrega el Shell. Partida normal: trae matchId y no trae mode.
- * Práctica: trae mode: 'practice' y no trae matchId (no hay sala).
- */
+// Contrato 03 y contrato de integración acordado con el Shell en el PR #6
+// (commit 829d9bc). El juego no tiene contacto con Auth0.
 export interface GameContext {
-  /** Sala de Matchmaking. Obligatorio en una partida; no viene en práctica. */
-  matchId?: string;
-  gameType: 'typing' | 'trivia' | 'memory';
+  matchId: string;
+  gameType: string;
   currentUser: { id: string; displayName: string };
-  /** Canal que el Shell crea para esta partida. No contiene tokens. */
+  /** Canal local opcional de eventos; no contiene credenciales. */
   events?: EventTarget;
-  /** Solo llega con 'practice'. Sin mode es una partida normal. */
-  mode?: 'practice';
 }
 
-/** Práctica: el Shell abre el juego sin sala. No se guarda nada. */
-export type PracticeContext = GameContext & { mode: 'practice' };
+/** Contexto de práctica: no representa una sala ni una partida persistida. */
+export interface PracticeContext {
+  mode: 'practice';
+  matchId?: never;
+  gameType: string;
+  currentUser: { id: string; displayName: string };
+  events: EventTarget;
+}
 
-/** Mismo nombre que usa el Shell para el contexto que recibe initialize(). */
-export type GameLaunchContext = GameContext;
+/** Contexto que initialize() puede recibir desde el Shell. */
+export type GameLaunchContext = GameContext | PracticeContext;
 
 export interface GameModule {
   initialize(context: GameLaunchContext): Promise<void>;
