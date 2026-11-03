@@ -1,4 +1,4 @@
-// ADR-003 §3 — Dependencias compartidas. Este archivo es IDÉNTICO en el Shell y en los 3 juegos: no lo modifiquen.
+// Dependencias compartidas con el Shell por Module Federation. La lista debe ser la misma en el Shell y en los 3 juegos: no la modifiquen.
 // Si usan otro paquete @aurelia/* (router, fetch-client, validation...), agréguenlo a la lista y avisen al Equipo 3.
 const AURELIA_VERSION = '2.0.0-rc.2';
 const pkgs = [
