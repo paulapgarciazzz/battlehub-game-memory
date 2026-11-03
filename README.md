@@ -186,13 +186,28 @@ El contrato de integración se encuentra documentado en [`docs/api-y-contrato-sh
 
 El modo práctica se encuentra integrado con el Shell y permite iniciar una partida individual sin crear una sala de Matchmaking ni registrar resultados.
 
-Se identifica mediante `mode: "practice"` y no utiliza la API para guardar la partida ni notificar su finalización.
+El Shell lo abre desde el botón **Practicar** del catálogo, solo para los usuarios que tienen acceso a Memory según el Profile Service. Le entrega al juego un contexto con `mode: "practice"` y sin `matchId`.
+
+En este modo el juego corre completo en el navegador: no se conecta al hub, no guarda la partida y no emite `battlehub:game-finished`, porque no hay sala que cerrar.
 
 ### Modo playground
 
-El requisito de playground establece que el juego debe poder ejecutarse independientemente del Shell, Auth0 y otros servicios.
+El juego se puede jugar por sí solo, sin Shell, sin Auth0 y sin ningún otro servicio.
 
-**La forma de iniciar este modo debe documentarse de acuerdo con la implementación disponible en el repositorio.** No debe confundirse con el modo práctica integrado en el Shell.
+1. Iniciar solo el microfrontend, sin la API ni SQL Server:
+
+   ```powershell
+   docker compose up --no-deps frontend
+   ```
+
+   Si ya está corriendo el entorno completo con `docker compose up`, el playground también está disponible.
+
+2. Abrir `http://localhost:4003` en el navegador.
+3. Escribir un nombre y pulsar **Practicar**.
+
+La partida de un jugador corre completa en el navegador: no llama a la API, no se conecta al hub y no guarda resultados. Al terminar muestra el resultado y permite jugar de nuevo.
+
+El botón **Unirme a la partida** de esa misma pantalla es para probar una partida de dos jugadores entre dos navegadores. Ese modo sí necesita la API (hub `/hubs/memory-local`, disponible cuando la API corre en `Development`, como en Docker Compose) y no guarda resultados.
 
 ## Persistencia y base de datos
 
@@ -200,11 +215,14 @@ El proyecto utiliza exclusivamente **SQL Server** como motor de base de datos.
 
 La persistencia se administra mediante Entity Framework Core, utilizando migraciones incrementales para mantener la estructura de la base de datos.
 
-Las entidades principales incluyen:
+La base de datos guarda los resultados de las partidas terminadas en dos tablas:
 
-- `GameSession`: información de las partidas.
-- `Board`: información del tablero.
-- `Player`: información de los jugadores.
+| Entidad                  | Tabla               | Contenido                                                              |
+| ------------------------ | ------------------- | ---------------------------------------------------------------------- |
+| `MemoryGameResult`       | `GameResults`       | Una fila por partida: `MatchId`, inicio, fin, ganador y si fue empate. |
+| `MemoryGameResultPlayer` | `GameResultPlayers` | Una fila por jugador de cada partida: usuario, nombre y puntaje.       |
+
+Las dos tablas usan claves `Guid`. Las clases `GameSession`, `Board` y `Player` del proyecto `Domain` son las reglas del juego y no se guardan en la base.
 
 La configuración de conexión se administra mediante variables de entorno y configuración externa.
 
@@ -425,12 +443,10 @@ Para consultar los detalles, revisar [`docs/api-y-contrato-shell.md`](docs/api-y
 
 El documento [`docs/api-y-contrato-shell.md`](docs/api-y-contrato-shell.md) contiene ejemplos de solicitudes HTTP mediante `curl` para probar los endpoints de la API, consultar resultados, historial y estadísticas, y revisar la integración con el Shell.
 
-## Limitaciones conocidas y aspectos por verificar
+## Limitaciones conocidas
 
-- Las partidas en curso se mantienen en memoria. Esta implementación debe revisarse frente al requisito R-12, que permite el uso de memoria únicamente en pruebas. No debe considerarse cumplido hasta resolver la persistencia de las partidas activas.
-- Si la API se reinicia, las partidas que estaban en curso se pierden, aunque los resultados previamente guardados permanecen en SQL Server.
-- La API no valida tokens de Auth0 ni restringe por sí misma las consultas de historial, estadísticas y resultados. La identidad se recibe desde el Shell.
-- Debe verificarse que el modo playground permita jugar sin Shell, Auth0 ni otros servicios, conforme al requisito R-34.
+- **Estado de la partida en curso.** Mientras se juega, el tablero, el turno y su temporizador viven en la memoria de la API, porque cambian varias veces por segundo y SignalR los envía en tiempo real a los dos jugadores. No es una base de datos en memoria: toda la persistencia del proyecto usa SQL Server, y el resultado de cada partida se guarda allí al terminar. Si la API se reinicia en medio de una partida, esa partida se pierde; los resultados ya guardados se conservan.
+- **Identidad del jugador.** Como el juego no tiene contacto con Auth0, la API y el hub confían en el usuario que entrega el Shell y no restringen quién consulta el historial, las estadísticas o los resultados. La API no debe exponerse fuera de la red de BattleHub.
 
 ## Referencias
 
