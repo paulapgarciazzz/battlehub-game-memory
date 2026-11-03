@@ -18,6 +18,12 @@ builder.Services.AddScoped<IGameResultService, GameResultService>();
 builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
 builder.Services.AddScoped<SampleDataSeeder>();
 
+// Tiempos de la partida: salen solo de la configuración (sección GameTiming).
+builder.Services.AddOptions<GameTimingOptions>()
+    .Bind(builder.Configuration.GetSection(GameTimingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // Partidas competitivas de BattleHub
 builder.Services.AddSingleton<MemoryGameService>();
 builder.Services.AddSingleton<TurnTimerService>();

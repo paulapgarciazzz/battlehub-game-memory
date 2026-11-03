@@ -1,4 +1,5 @@
 import {singleton} from 'aurelia';
+import environment from '../../config/environment.json';
 
 export type GamePhase = 'join' | 'waiting-for-opponent' | 'preview' | 'playing' | 'finished';
 
@@ -28,6 +29,10 @@ export class MemoryGameState {
   public players: PlayerViewModel[] = [];
   public currentPlayerId: string | null = null;
   public turnDeadline: number | null = null;
+
+  // Duración del turno. En partidas con servidor la define la API; este valor
+  // inicial se usa hasta recibirla y en la práctica, que no tiene servidor.
+  public turnTotalMs = environment.turnTimeoutMs;
   public matchStartedAt: Date | null = null;
   public winnerUserId: string | null = null;
   public isDraw = false;
@@ -72,6 +77,7 @@ export class MemoryGameState {
     this.players = [];
     this.currentPlayerId = null;
     this.turnDeadline = null;
+    this.turnTotalMs = environment.turnTimeoutMs;
     this.matchStartedAt = null;
     this.winnerUserId = null;
     this.isDraw = false;

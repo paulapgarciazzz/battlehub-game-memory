@@ -51,7 +51,7 @@ public sealed class MemoryLocalTurnTimerServiceTests
             .Returns(Task.CompletedTask);
 
         service.Start(session);
-        await notified.Task.WaitAsync(TimeSpan.FromSeconds(GameSession.TurnTimeoutSeconds + 10));
+        await notified.Task.WaitAsync(TimeSpan.FromSeconds(session.TurnTimeoutSeconds + 10));
 
         Assert.Equal("u2", session.CurrentPlayer.UserId);
         Assert.NotNull(service.Deadline(session.MatchId));
@@ -60,7 +60,7 @@ public sealed class MemoryLocalTurnTimerServiceTests
 
     private static (MemoryLocalTurnTimerService Service, MemoryLocalGameService Games, Mock<IClientProxy> Group) CreateService()
     {
-        var games = new MemoryLocalGameService();
+        var games = new MemoryLocalGameService(TestGameTiming.Create());
         var group = new Mock<IClientProxy>();
         var clients = new Mock<IHubClients>();
         clients.Setup(c => c.Group(It.IsAny<string>())).Returns(group.Object);

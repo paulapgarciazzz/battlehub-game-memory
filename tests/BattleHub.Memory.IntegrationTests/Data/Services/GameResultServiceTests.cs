@@ -15,7 +15,7 @@ public sealed class GameResultServiceTests(MemoryDatabaseFixture database)
         string secondUserId,
         int secondScore)
     {
-        var board = new Board(["A", "B", "C", "D", "E", "F", "G", "H"]);
+        var board = new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5);
         foreach (var card in board.Cards)
             card.MarkAsMatched();
 
@@ -26,7 +26,7 @@ public sealed class GameResultServiceTests(MemoryDatabaseFixture database)
         for (var pair = 0; pair < secondScore; pair++)
             second.AddMatchedPair();
 
-        return new GameSession(matchId, board, [first, second]);
+        return new GameSession(matchId, board, [first, second], turnTimeoutSeconds: 10);
     }
 
     [Fact]
@@ -36,8 +36,9 @@ public sealed class GameResultServiceTests(MemoryDatabaseFixture database)
         var service = new GameResultService(db);
         var session = new GameSession(
             "unfinished-" + Guid.NewGuid().ToString("N"),
-            new Board(["A", "B", "C", "D", "E", "F", "G", "H"]),
-            [new Player("u1", "Ana"), new Player("u2", "Beto")]);
+            new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5),
+            [new Player("u1", "Ana"), new Player("u2", "Beto")],
+            turnTimeoutSeconds: 10);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.SaveResultAsync(session, session.StartedAt));

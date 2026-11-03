@@ -1,5 +1,6 @@
 using BattleHub.Memory.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 
 namespace BattleHub.Memory.Api.Services;
 
@@ -14,11 +15,12 @@ public sealed class ResultRetryWorker(
     MemoryGameService games,
     MatchResultRecorder recorder,
     IHubContext<MemoryHub> hub,
+    IOptions<GameTimingOptions> timing,
     ILogger<ResultRetryWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(timing.Value.ResultRetryIntervalSeconds));
 
         while (await timer.WaitForNextTickAsync(ct))
         {

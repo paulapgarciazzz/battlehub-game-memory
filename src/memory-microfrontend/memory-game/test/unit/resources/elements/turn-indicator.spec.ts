@@ -10,6 +10,7 @@ describe('TurnIndicator', () => {
     const container = createTestContainer();
     const indicator = container.invoke(TurnIndicator);
     const state = container.get(MemoryGameState);
+    state.turnTotalMs = 10_000;
     const now = new Date('2026-10-04T12:00:00Z').getTime();
     jest.setSystemTime(now);
 
@@ -30,5 +31,26 @@ describe('TurnIndicator', () => {
     indicator.detaching();
     jest.advanceTimersByTime(1_000);
     expect(indicator.remainingSeconds).toBe(0);
+  });
+
+  it('calcula la barra y los segundos con el tiempo de turno de la partida', () => {
+    jest.useFakeTimers();
+    const container = createTestContainer();
+    const indicator = container.invoke(TurnIndicator);
+    const state = container.get(MemoryGameState);
+    state.turnTotalMs = 20_000;
+    const now = new Date('2026-10-04T12:00:00Z').getTime();
+    jest.setSystemTime(now);
+
+    indicator.attached();
+    expect(indicator.remainingSeconds).toBe(20);
+    expect(indicator.remainingRatio).toBe(1);
+
+    state.turnDeadline = now + 10_200;
+    jest.advanceTimersByTime(200);
+    expect(indicator.remainingSeconds).toBe(10);
+    expect(indicator.remainingRatio).toBeCloseTo(0.5);
+
+    indicator.detaching();
   });
 });

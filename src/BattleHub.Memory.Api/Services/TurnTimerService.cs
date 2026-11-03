@@ -16,7 +16,7 @@ public class TurnTimerService
 {
     private readonly IHubContext<MemoryHub> _hubContext;
     // Hora UTC en que vence el turno actual de cada partida. Se manda a los
-    // clientes (TurnDeadline) para que el contador de 10 s coincida en las dos
+    // clientes (TurnDeadline) para que el contador coincida en las dos
     // pantallas y se recupere al reconectar.
     private readonly ConcurrentDictionary<string, DateTimeOffset> _deadlines = new();
 
@@ -39,7 +39,7 @@ public class TurnTimerService
     }
 
     /// <summary>
-    /// Inicia el temporizador de 10 segundos para el turno actual,
+    /// Inicia el temporizador para el turno actual,
     /// reemplazando (y cancelando) el temporizador anterior de la partida.
     /// </summary>
     public void Start(GameSession session)
@@ -51,9 +51,9 @@ public class TurnTimerService
         }
 
         // Se guarda el número de turno al armar el timer: si cuando se
-        // cumplen los 10 segundos el turno ya cambió, no se quita nada.
+        // cumple el tiempo el turno ya cambió, no se quita nada.
         var expectedTurnNumber = session.TurnNumber;
-        _deadlines[session.MatchId] = DateTimeOffset.UtcNow.AddSeconds(GameSession.TurnTimeoutSeconds);
+        _deadlines[session.MatchId] = DateTimeOffset.UtcNow.AddSeconds(session.TurnTimeoutSeconds);
 
         var cancellationTokenSource =
             new CancellationTokenSource();
@@ -109,7 +109,7 @@ public class TurnTimerService
     }
 
     /// <summary>
-    /// Espera 10 segundos y cambia el turno
+    /// Espera el tiempo de turno de la partida y cambia el turno
     /// si el jugador no realizó la jugada.
     /// </summary>
     private async Task RunTurnTimer(
@@ -123,7 +123,7 @@ public class TurnTimerService
         {
             await Task.Delay(
                 TimeSpan.FromSeconds(
-                    GameSession.TurnTimeoutSeconds),
+                    session.TurnTimeoutSeconds),
                 cancellationTokenSource.Token);
 
             // Si el turno ya cambió o la partida terminó, este timer
@@ -148,7 +148,7 @@ public class TurnTimerService
                     timeout.PreviousPlayerId,
                     timeout.CurrentPlayerId,
                     TurnTimeoutSeconds =
-                        GameSession.TurnTimeoutSeconds
+                        session.TurnTimeoutSeconds
                 });
 
             // El siguiente temporizador ya quedó iniciado antes del evento.

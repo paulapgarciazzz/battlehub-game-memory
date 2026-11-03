@@ -12,8 +12,8 @@ public sealed class MatchResultRecorderTests
     public async Task RecordAsync_SavesResultWithSessionStartTime()
     {
         // Arrange
-        var session = new GameSession("match1", new Board(["A", "B", "C", "D", "E", "F", "G", "H"]),
-            [new Player("user1", "Jugador 1"), new Player("user2", "Jugador 2")]);
+        var session = new GameSession("match1", new Board(["A", "B", "C", "D", "E", "F", "G", "H"], previewSeconds: 5),
+            [new Player("user1", "Jugador 1"), new Player("user2", "Jugador 2")], turnTimeoutSeconds: 10);
         var resultId = Guid.NewGuid();
         var results = new Mock<IGameResultService>();
         results.Setup(r => r.SaveResultAsync(session, session.StartedAt, It.IsAny<CancellationToken>()))

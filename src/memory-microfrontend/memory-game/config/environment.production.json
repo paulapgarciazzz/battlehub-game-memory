@@ -3,5 +3,8 @@
   "testing": false,
   "apiBaseUrl": "",
   "hubBaseUrl": "",
-  "localHubPort": 5095
+  "localHubPort": 5095,
+  "turnTimeoutMs": 10000,
+  "noMatchRevealDelayMs": 900,
+  "practicePreviewMs": 5000
 }

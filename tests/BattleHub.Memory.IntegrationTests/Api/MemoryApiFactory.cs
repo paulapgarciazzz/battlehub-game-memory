@@ -1,3 +1,4 @@
+using BattleHub.Memory.Api.Services;
 using BattleHub.Memory.Data.DbContext;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -61,6 +62,13 @@ public sealed class MemoryApiFactory : WebApplicationFactory<Program>, IAsyncLif
             services.RemoveAll<IHostedService>();
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            // Tiempos fijos: cambiar appsettings.json no debe romper estas pruebas.
+            services.PostConfigure<GameTimingOptions>(timing =>
+            {
+                timing.TurnTimeoutSeconds = 10;
+                timing.PreviewSeconds = 5;
+                timing.ResultRetryIntervalSeconds = 5;
+            });
             services.RemoveAll<DbContextOptions<MemoryDbContext>>();
             services.RemoveAll<MemoryDbContext>();
             services.AddDbContext<MemoryDbContext>(options => options.UseSqlServer(connectionString!));

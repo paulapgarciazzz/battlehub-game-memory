@@ -1,5 +1,6 @@
 
 import {IEventAggregator, resolve, singleton} from 'aurelia';
+import environment from '../../config/environment.json';
 import {MemoryHubService, MemoryHubEvents} from './memory-hub.service';
 import {MemoryHttpService} from './memory-http.service';
 import {MemoryGameState} from '../state/memory-game-state';
@@ -12,10 +13,6 @@ import {
   TurnTimeoutMessage,
   StateSnapshotMessage
 } from '../models/memory-hub.messages';
-
-const NO_MATCH_REVEAL_DELAY_MS = 900;
-const TURN_TIMEOUT_MS = 10_000;
-const PRACTICE_PREVIEW_MS = 5_000;
 
 @singleton()
 export class MemoryGameOrchestrator {
@@ -316,7 +313,7 @@ public async joinLocalMatch(
       );
 
       this.state.practiceResolving = false;
-    }, NO_MATCH_REVEAL_DELAY_MS);
+    }, environment.noMatchRevealDelayMs);
 
     this.revealTimers.add(timer);
   }
@@ -383,7 +380,7 @@ public async joinLocalMatch(
     this.state.resultSaveError = null;
     this.state.phase = 'preview';
 
-    // Mostrar las cartas durante cinco segundos.
+    // Mostrar las cartas durante la vista previa.
     const timer = window.setTimeout(() => {
       this.revealTimers.delete(timer);
 
@@ -400,7 +397,7 @@ public async joinLocalMatch(
       }));
 
       this.state.phase = 'playing';
-    }, PRACTICE_PREVIEW_MS);
+    }, environment.practicePreviewMs);
 
     this.revealTimers.add(timer);
   }
@@ -503,7 +500,7 @@ public async joinLocalMatch(
           : 'local-1';
 
       this.state.practiceResolving = false;
-    }, NO_MATCH_REVEAL_DELAY_MS);
+    }, environment.noMatchRevealDelayMs);
 
     this.revealTimers.add(timer);
   }
@@ -697,6 +694,7 @@ public async joinLocalMatch(
   }));
 
   this.state.currentPlayerId = msg.currentPlayerId;
+  this.applyTurnTimeout(msg.turnTimeoutSeconds);
   this.resetTurnDeadline(msg.turnDeadline);
 }
 
@@ -740,7 +738,7 @@ public async joinLocalMatch(
       const timer = window.setTimeout(() => {
         this.revealTimers.delete(timer);
         this.hideUnmatchedCards(flippedIds);
-      }, NO_MATCH_REVEAL_DELAY_MS);
+      }, environment.noMatchRevealDelayMs);
 
       this.revealTimers.add(timer);
     }
@@ -758,6 +756,7 @@ public async joinLocalMatch(
     );
 
     this.state.currentPlayerId = msg.currentPlayerId;
+    this.applyTurnTimeout(msg.turnTimeoutSeconds);
     this.resetTurnDeadline(msg.turnDeadline);
   }
 
@@ -787,10 +786,17 @@ public async joinLocalMatch(
     );
   }
 
+  // El servidor define el tiempo de turno. Si no lo manda, se mantiene el actual.
+  private applyTurnTimeout(seconds?: number): void {
+    if (seconds) {
+      this.state.turnTotalMs = seconds * 1000;
+    }
+  }
+
   private resetTurnDeadline(deadline?: string | null): void {
     this.state.turnDeadline = deadline
       ? Date.parse(deadline)
-      : Date.now() + TURN_TIMEOUT_MS;
+      : Date.now() + this.state.turnTotalMs;
   }
 
   private checkForGameOver(): void {
@@ -845,6 +851,7 @@ public async joinLocalMatch(
 
     this.state.currentPlayerId = msg.currentPlayerId;
     this.state.matchStartedAt = new Date(msg.startedAt);
+    this.applyTurnTimeout(msg.turnTimeoutSeconds);
     this.state.turnDeadline = msg.turnDeadline
       ? Date.parse(msg.turnDeadline)
       : null;

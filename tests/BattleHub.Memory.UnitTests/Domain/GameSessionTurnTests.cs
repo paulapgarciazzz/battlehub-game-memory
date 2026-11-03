@@ -10,7 +10,7 @@ public class GameSessionTurnTests
         {
             "A", "B", "C", "D",
             "E", "F", "G", "H"
-        });
+        }, previewSeconds: 5);
 
         var players = new List<Player>
         {
@@ -18,7 +18,7 @@ public class GameSessionTurnTests
             new Player("user2", "Jugador 2")
         };
 
-        return new GameSession("match1", board, players);
+        return new GameSession("match1", board, players, turnTimeoutSeconds: 10);
     }
 
     // Busca dos cartas con el mismo valor (el tablero se mezcla al azar).
