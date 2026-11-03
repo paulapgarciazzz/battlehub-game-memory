@@ -8,6 +8,9 @@
       "applicationUrl": "http://localhost:5095",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__MemoryDatabase": "Server=(localdb)\\mssqllocaldb;Database=BattleHubMemoryDb;Trusted_Connection=True;MultipleActiveResultSets=true",
+        "Cors__Origins__0": "http://localhost:4000",
+        "Cors__Origins__1": "http://localhost:4003",
         "Database__MigrateOnStartup": "true",
         "SampleData__Enabled": "true"
       }
@@ -19,6 +22,9 @@
       "applicationUrl": "https://localhost:7064;http://localhost:5095",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__MemoryDatabase": "Server=(localdb)\\mssqllocaldb;Database=BattleHubMemoryDb;Trusted_Connection=True;MultipleActiveResultSets=true",
+        "Cors__Origins__0": "http://localhost:4000",
+        "Cors__Origins__1": "http://localhost:4003",
         "Database__MigrateOnStartup": "true",
         "SampleData__Enabled": "true"
       }
