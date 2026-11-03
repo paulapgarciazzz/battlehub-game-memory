@@ -5,7 +5,8 @@ import {
   GAME_FINISHED_EVENT,
   type GameFinishedDetail,
   type GameLaunchContext,
-  type GameModule as IGameModule
+  type GameModule as IGameModule,
+  type PracticeContext
 } from './game-contracts';
 import {GameView} from './resources/elements/game-view';
 import {MemoryGameOrchestrator} from './services/memory-game-orchestrator';
@@ -49,19 +50,20 @@ export class GameModule implements IGameModule {
       throw new Error('El contexto del juego necesita gameType memory y currentUser (id y displayName).');
     }
 
-    // Viene del Shell en tiempo de ejecución: puede traer un modo desconocido.
-    const mode: unknown = context.mode;
+    // Rechaza modos no definidos, incluso si el contexto llega desde JavaScript.
+    const mode: unknown = 'mode' in context ? context.mode : undefined;
 
     if (mode !== undefined && mode !== 'practice') {
       throw new Error(`Memory no conoce el modo "${String(mode)}".`);
     }
 
     // Una partida normal necesita la sala; la práctica no tiene matchId.
-    if (context.mode !== 'practice' && !context.matchId) {
+    const isPractice = mode === 'practice';
+    if (!isPractice && !context.matchId) {
       throw new Error('El contexto del juego necesita matchId y currentUser (id y displayName).');
     }
 
-    if (context.mode !== 'practice') {
+    if (!isPractice) {
       this.orchestrator.configure(detail => this.emitGameFinished(detail));
     }
 
@@ -84,7 +86,7 @@ export class GameModule implements IGameModule {
 
     this.joined = true;
 
-    if (this.context.mode === 'practice') {
+    if (isPracticeContext(this.context)) {
       // Sin sala ni servidor: el modo solo corre completo en el navegador.
       this.orchestrator.startSolo(this.context.currentUser.displayName, true);
       return;
@@ -93,7 +95,7 @@ export class GameModule implements IGameModule {
     try {
       // initialize() ya exigió matchId en una partida normal.
       await this.orchestrator.joinMatch(
-        this.context.matchId ?? '',
+        this.context.matchId,
         this.context.currentUser.id,
         this.context.currentUser.displayName);
     } catch (error) {
@@ -132,4 +134,8 @@ export class GameModule implements IGameModule {
     await this.orchestrator.leaveMatch();
     this.state.embedded = false;
   }
+}
+
+function isPracticeContext(context: GameLaunchContext): context is PracticeContext {
+  return 'mode' in context && context.mode === 'practice';
 }
